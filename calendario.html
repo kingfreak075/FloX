@@ -20,6 +20,44 @@
         .stat-box small { display: block; font-size: 0.65rem; color: #64748b; font-weight: 800; text-transform: uppercase; }
         .stat-box strong { font-size: 1.2rem; color: var(--primary); }
         #loading-overlay { display: none; text-align: center; padding: 10px; font-weight: 600; color: var(--primary); }
+
+/* Pallino VERDE: 8 ore esatte */
+.calendar-day.status-ok::after {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background-color: #22c55e; /* Verde */
+    border-radius: 50%;
+    position: absolute;
+    bottom: 4px;
+}
+
+/* Pallino GIALLO: Meno di 8 ore */
+.calendar-day.status-warning::after {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background-color: #f59e0b; /* Giallo/Arancio */
+    border-radius: 50%;
+    position: absolute;
+    bottom: 4px;
+}
+
+/* Pallino ROSSO: Più di 8 ore o 0 ore nei feriali */
+.calendar-day.status-error::after {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background-color: #ef4444; /* Rosso */
+    border-radius: 50%;
+    position: absolute;
+    bottom: 4px;
+}
+
+
+
+
+
     </style>
 </head>
 <body class="bg-app">

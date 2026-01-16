@@ -118,9 +118,22 @@ async function caricaScheda() {
     checkScadenza('det-ult-sem', imp.ult_sem, 6);
     checkScadenza('det-ult-vp', imp.utl_vp, 24);
 
-    document.getElementById('btn-nuovo-lavoro').onclick = () => {
-        window.location.href = `nuovo_lavoro.html?id=${encodeURIComponent(imp.impianto)}`;
+   
+
+document.getElementById('btn-nuovo-lavoro').onclick = () => {
+    // Prepariamo l'oggetto con i dati puliti per la pagina successiva
+    const datiPerLavoro = {
+        id: imp.impianto,
+        nome: imp.cliente || imp.impianto, // Usa il cliente o il codice se il cliente manca
+        indirizzo: `${imp.Indirizzo || ''} ${imp.localit || ''}`.trim()
     };
+    
+    // Salvataggio nel "magazzino" del browser
+    localStorage.setItem('selected_plant', JSON.stringify(datiPerLavoro));
+    
+    // Navigazione
+    window.location.href = `nuovo_lavoro.html?id=${encodeURIComponent(imp.impianto)}`;
+};
 
     document.getElementById('dettaglio-content').style.display = 'block';
 }
