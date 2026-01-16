@@ -1,154 +1,143 @@
-
 // ========== CONFIGURAZIONE ==========
 const SUPABASE_URL = 'https://berlfufnmolyrmxeyqfd.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_a3USDfV7gbuauU2Kd6DuQQ_8PFVElpy';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Mostrare solo manutentore loggato?
-// false = dropdown con TUTTI i manutentori
-// true  = dropdown con SOLO il manutentore loggato
-const SOLO_LOGGATO = false; // <- come richiesto ora: mostra TUTTI
-
 const tecnicoLoggato = localStorage.getItem('tecnico_loggato');
 
-// ======================================================
-// AVVIO PAGINA
-// ======================================================
 document.addEventListener('DOMContentLoaded', async () => {
-  // mese corrente
-  const meseCorrente = new Date().getMonth() + 1;
-  const selMese = document.getElementById('select-mese');
-  if (selMese) selMese.value = meseCorrente;
+    // Imposta mese corrente nel select
+    const meseCorrente = new Date().getMonth() + 1;
+    const selMese = document.getElementById('select-mese');
+    if (selMese) selMese.value = meseCorrente;
 
-  // carico manutentori e, quando pronto, carico gli impianti
-  await caricaManutentori();
-  caricaManutenzioni();
+    // Carica prima i manutentori, poi gli impianti
+    await caricaManutentori();
+    caricaManutenzioni();
 });
 
-// ======================================================
-// CARICA LISTA MANUTENTORI
-// ======================================================
+// Carica la lista dei tecnici per il filtro
 async function caricaManutentori() {
-  const select = document.getElementById('select-tecnico');
-  if (!select) return;
+    const select = document.getElementById('select-tecnico');
+    try {
+        // Estraiamo i tecnici unici dalla tabella Parco_app
+        const { data, error } = await supabaseClient
+            .from('Parco_app')
+            .select('tecnico');
 
-  select.innerHTML = "<option value=''>Caricamento...</option>";
+        if (error) throw error;
 
-  let query = supabaseClient
-    .from('manutentori')
-    .select('Manutentore, Giro')
-    .order('Manutentore', { ascending: true });
-
-  if (SOLO_LOGGATO && tecnicoLoggato) {
-    query = query.eq('Manutentore', tecnicoLoggato);
-  }
-
-  const { data, error } = await query;
-  if (error) {
-    console.error('[manutenzioni] Errore caricamento manutentori:', error);
-    select.innerHTML = "<option value=''>Errore caricamento</option>";
-    return;
-  }
-
-  select.innerHTML = "";
-  if (!data || data.length === 0) {
-    select.innerHTML = "<option value=''>Nessun manutentore trovato</option>";
-    return;
-  }
-
-  data.forEach(m => {
-    const opt = document.createElement('option');
-    // valore = Giro (ATTENZIONE: in manutentori non conosciamo il tipo; lo tratteremo come string)
-    opt.value = String(m.Giro ?? '').trim();
-    opt.textContent = m.Manutentore ?? '(senza nome)';
-    select.appendChild(opt);
-  });
-
-  // se SOLO_LOGGATO=true e c’è un’unica opzione, sarà già selezionata
+        const tecniciUnici = [...new Set(data.map(item => item.tecnico))].filter(Boolean).sort();
+        
+        select.innerHTML = ""; 
+        tecniciUnici.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t;
+            opt.innerText = t;
+            if (t === tecnicoLoggato) opt.selected = true;
+            select.appendChild(opt);
+        });
+    } catch (err) {
+        console.error("Errore caricamento tecnici:", err);
+    }
 }
 
-// ======================================================
-// CARICA IMPIANTI DEL GIRO + FILTRO SEMESTRALE
-// ======================================================
 async function caricaManutenzioni() {
-  const lista = document.getElementById('lista-manutenzioni');
-  if (!lista) return;
-  lista.innerHTML = "<div style='color:#64748b'>Caricamento...</div>";
+    const meseSelezionato = parseInt(document.getElementById('select-mese').value);
+    const tecnicoScelto = document.getElementById('select-tecnico').value;
+    const lista = document.getElementById('lista-manutenzioni');
+    
+    lista.innerHTML = "<div style='text-align:center; padding:20px;'>Caricamento in corso...</div>";
 
-  const meseSelezionato = parseInt(document.getElementById('select-mese').value, 10);
-  const giroVal = document.getElementById('select-tecnico').value; // string
+    try {
+        // 1) QUERY IMPIANTI (Nome tabella esatto: Parco_app)
+        const { data: impianti, error } = await supabaseClient
+            .from('Parco_app')
+            .select('*')
+            .eq('tecnico', tecnicoScelto);
 
-  console.log('[manutenzioni] meseSelezionato =', meseSelezionato, 'giro =', giroVal);
+        if (error) throw error;
 
-  if (!giroVal) {
-    lista.innerHTML = "<div>Seleziona un manutentore.</div>";
-    return;
-  }
+        // 2) FILTRO SEMESTRALE (Colonna: mese_sem)
+        const filtrati = impianti.filter(imp => {
+            const m = parseInt(imp.mese_sem);
+            if (isNaN(m)) return false;
+            const opposto = m > 6 ? m - 6 : m + 6;
+            return (m === meseSelezionato || opposto === meseSelezionato);
+        });
 
-  // Query su Parco_app con nome colonne esatte:
-  //  - Indirizzo (I maiuscola)
-  //  - localit (senza accento)
-  //  - mese_sem / ult_sem (text)
-  const { data: impianti, error } = await supabaseClient
-    .from('Parco_app')
-    .select('impianto, "Indirizzo", localit, mese_sem, ult_sem, giro')
-    .eq('giro', String(giroVal)); // giro è TEXT in Parco_app
+        // 3) CONTROLLO ESEGUITI (Tabella: fogliolavoro)
+        // Supponiamo che il codice '10' identifichi la manutenzione
+        const { data: eseguiti } = await supabaseClient
+            .from('fogliolavoro')
+            .select('impianto')
+            .eq('mese', meseSelezionato)
+            .eq('anno', new Date().getFullYear())
+            .eq('codice', '10');
 
-  if (error) {
-    console.error('[manutenzioni] Errore lettura impianti:', error);
-    lista.innerHTML = `<div style='color:#b91c1c'>Errore lettura impianti: ${error.message}</div>`;
-    return;
-  }
+        const listaEseguiti = eseguiti ? eseguiti.map(e => e.impianto) : [];
 
-  if (!impianti || impianti.length === 0) {
-    lista.innerHTML = "<div style='color:#64748b;text-align:center;margin-top:40px'>Nessun impianto per questo giro.</div>";
-    return;
-  }
+        // 4) RENDERING
+        if (filtrati.length === 0) {
+            lista.innerHTML = "<div style='text-align:center; margin-top:40px; color:#64748b;'>Nessuna manutenzione programmata.</div>";
+            return;
+        }
 
-  // Filtro semestrale
-  const filtrati = impianti.filter(imp => {
-    const m = parseInt(imp.mese_sem, 10); // mese_sem è text
-    if (Number.isNaN(m)) return false;
-    const opposto = m > 6 ? m - 6 : m + 6;
-    return (m === meseSelezionato || opposto === meseSelezionato);
-  });
+        // ... (mantenere la parte iniziale della funzione caricaManutenzioni fino al ciclo forEach) ...
 
-  if (filtrati.length === 0) {
-    lista.innerHTML = "<div style='color:#64748b;text-align:center;margin-top:40px'>Nessuna semestrale per questo mese.</div>";
-    return;
-  }
+lista.innerHTML = "";
+filtrati.forEach(imp => {
+    const giaFatto = listaEseguiti.includes(imp.impianto);
+    const mP = parseInt(imp.mese_sem);
+    const mS = mP > 6 ? mP - 6 : mP + 6;
 
-  // Render card (layout invariato: inline style semplice)
-  lista.innerHTML = "";
-  filtrati.forEach(imp => {
+    // Funzione per avere il nome del mese abbreviato
+    const nomiMesi = ["GEN", "FEB", "MAR", "APR", "MAG", "GIU", "LUG", "AGO", "SET", "OTT", "NOV", "DIC"];
+    const testoFiligrana = `${nomiMesi[mP-1]} - ${nomiMesi[mS-1]}`;
+
     const card = document.createElement('div');
     card.style.cssText = `
-      background: white;
-      border-radius: 14px;
-      padding: 16px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-      border-left: 6px solid #3b82f6;
+        background: white; border-radius: 16px; padding: 18px; margin-bottom: 15px;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border-left: 6px solid ${giaFatto ? '#22c55e' : '#3b82f6'};
+        display: flex; flex-direction: column; position: relative; overflow: hidden;
     `;
 
     card.innerHTML = `
-      <div style="font-size:1.1rem; font-weight:900; color:#1e293b">
-        ${imp.impianto ?? '-'}
-      </div>
+        <div style="position: absolute; bottom: -5px; right: 10px; font-size: 2.2rem; font-weight: 900; color: #e2e8f0; z-index: 0; pointer-events: none; letter-spacing: -1px; opacity: 0.8;">
+            ${testoFiligrana}
+        </div>
 
-      <div style="font-size:0.85rem; color:#475569; margin-top:4px">
-        ${imp.Indirizzo ?? '-'}
-      </div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; z-index: 1;">
+            <div style="flex:1">
+                <div style="font-weight:800; color:#1e293b; font-size: 1.1rem; letter-spacing: -0.3px;">${imp.impianto}</div>
+                
+                <div style="font-size:0.85rem; color:#64748b; margin-top: 2px;">
+                    ${imp.Indirizzo}${imp.localit ? ' - ' + imp.localit : ''}
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 5px; margin-top: 10px; color: #475569;">
+                    <span class="material-symbols-rounded" style="font-size: 16px;">history</span>
+                    <span style="font-size: 0.75rem; font-weight: 600;">Ultima semestrale: ${imp.ult_sem || '---'}</span>
+                </div>
+            </div>
 
-      <div style="font-size:0.85rem; color:#475569">
-        ${imp.localit ?? '-'}
-      </div>
-
-      <div style="margin-top:8px; font-size:0.75rem; color:#0f172a; font-weight:700">
-        Ultima Semestrale:
-        <span style="color:#2563eb">${imp.ult_sem ?? '-'}</span>
-      </div>
+            <div style="z-index: 2;">
+                ${giaFatto 
+                    ? '<span class="material-symbols-rounded" style="color:#22c55e; font-size: 32px;">check_circle</span>' 
+                    : `<button onclick="vaiAEsegui('${imp.impianto}', '${imp.Indirizzo.replace(/'/g, "\\'")} - ${imp.localit ? imp.localit.replace(/'/g, "\\'") : ''}')" 
+                        style="background:#2563eb; color:white; border:none; padding:10px 18px; border-radius:10px; font-weight:700; font-size:0.8rem; cursor:pointer; box-shadow: 0 4px 10px rgba(37,99,235,0.2);">ESEGUI</button>`
+                }
+            </div>
+        </div>
     `;
-
     lista.appendChild(card);
-  });
+});
+    } catch (err) {
+        lista.innerHTML = `<div style='color:red; text-align:center;'>Errore: ${err.message}</div>`;
+    }
+}
+
+function vaiAEsegui(codice, indirizzo) {
+    localStorage.setItem('selected_plant', JSON.stringify({ impianto: codice, indirizzo: indirizzo }));
+    window.location.href = `nuovo_lavoro.html?id=${codice}`;
 }
