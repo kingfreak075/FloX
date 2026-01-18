@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Nuovo Lavoro</title>
+    <title>Nuovo Lavoro - Montaggio</title>
     <link rel="stylesheet" href="style.css">
-    
-   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -42,50 +41,26 @@
             margin-bottom: 20px;
         }
 
-        /* Griglia Codici */
-        .grid-codici {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin-top: 10px;
-        }
-
-        .card-codice {
-            background: white;
-            border: 2px solid #e2e8f0;
-            border-radius: 14px;
-            padding: 15px 5px;
+        /* Card Tipo Lavoro */
+        .tipo-lavoro-card {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border: 2px solid #7dd3fc;
+            border-radius: 16px;
+            padding: 15px;
+            margin-bottom: 20px;
             text-align: center;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
 
-        .card-codice.active {
-            border-color: var(--primary);
-            background: #eff6ff;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+        .tipo-lavoro-card .badge {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 800;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
         }
-
-        .card-codice .num {
-            font-size: 1.5rem;
-            font-weight: 900;
-            color: var(--text);
-        }
-
-        .card-codice .desc {
-            font-size: 0.65rem;
-            color: #64748b;
-            text-transform: uppercase;
-            font-weight: 700;
-            margin-top: 4px;
-        }
-
-        .card-codice.active .num { color: var(--primary); }
 
         /* Badge Riscontro Ore */
         .box-riepilogo-ore {
@@ -217,129 +192,156 @@
             background: white;
         }
 
-.material-symbols-rounded {
-  font-family: 'Material Symbols Rounded';
-  font-weight: normal;
-  font-style: normal;
-  font-size: 24px;  /* Dimensione base */
-  display: inline-block;
-  line-height: 1;
-  text-transform: none;
-  letter-spacing: normal;
-  word-wrap: normal;
-  white-space: nowrap;
-  direction: ltr;
-}
+        .material-symbols-rounded {
+            font-family: 'Material Symbols Rounded';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
 
+        .btn-primary {
+            margin-top: 30px;
+            width: 100%;
+            height: 55px;
+            border-radius: 12px;
+            font-weight: 900;
+            font-size: 1rem;
+            cursor: pointer;
+            background: var(--primary);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            background: color-mix(in srgb, var(--primary) 85%, black);
+            transform: translateY(-1px);
+        }
+
+        .btn-scheda {
+            height: 40px;
+            width: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
     <div class="header-app">
-        <button onclick="history.back()" class="btn-scheda" style="height: 40px; width: 40px;">
-  <span class="material-symbols-rounded">arrow_back</span>
-</button>
-        <h2 style="font-size: 1.1rem; font-weight: 800; margin: 0;">Inserimento Intervento</h2>
+        <button onclick="history.back()" class="btn-scheda">
+            <span class="material-symbols-rounded">arrow_back</span>
+        </button>
+        <h2 style="font-size: 1.1rem; font-weight: 800; margin: 0;">Inserimento Montaggio</h2>
     </div>
 
     <div class="container" style="margin-top: 70px;">
         
+        <!-- Card Tipo Lavoro Fisso -->
+        <div class="tipo-lavoro-card">
+            <div style="font-size: 0.7rem; font-weight: 800; color: #0369a1; text-transform: uppercase; margin-bottom: 5px;">TIPO LAVORO</div>
+            <div class="badge">MONTAGGIO</div>
+            <div style="font-size: 0.75rem; color: #0c4a6e; margin-top: 8px; font-weight: 600;">Codice: <span id="display-codice-montaggio" style="font-weight: 800;">-</span></div>
+        </div>
+
+        <!-- Card Impianto -->
         <div class="plant-header-card">
-            <label id="label-impianto" class="label-field">Impianto</label>
+            <label class="label-field">Impianto</label>
             <div id="display-impianto" style="font-size: 1.3rem; font-weight: 900; color: #1e293b;">-</div>
             <div id="display-indirizzo" style="font-size: 0.85rem; color: #64748b; margin-top: 4px;">-</div>
-            <input type="text" id="input-commessa" class="input-modern" placeholder="Es. 12345678" maxlength="8" style="display:none; margin-top:12px; font-weight: 800; font-size: 1.2rem; letter-spacing: 1px;">
+            <div id="display-cliente" style="font-size: 0.85rem; color: #475569; margin-top: 6px; font-weight: 600;">-</div>
         </div>
+
 <!-- DATA LAVORO (SPOSTATA QUI) -->
 <div class="section-card">
     <label class="label-field">Data Lavoro</label>
     <input type="date" id="data-lavoro" class="input-modern">
 </div>
-        <div class="section-card">
-            <label class="label-field">Seleziona Codice</label>
-            <div class="grid-codici">
-                <div class="card-codice" onclick="selectCodice('21', this)">
-                    <span class="num">21</span><span class="desc">Manut.</span>
-                </div>
-                <div class="card-codice" onclick="selectCodice('22', this)">
-                    <span class="num">22</span><span class="desc">Chiamata</span>
-                </div>
-                <div class="card-codice" onclick="selectCodice('24', this)">
-                    <span class="num">24</span><span class="desc">Enti</span>
-                </div>
-                <div class="card-codice" onclick="selectCodice('13', this)">
-                    <span class="num">13</span><span class="desc">Riparaz.</span>
-                </div>
-                <div class="card-codice" onclick="selectCodice('10', this)">
-                    <span class="num">10</span><span class="desc">Q2SA</span>
-                </div>
-            </div>
-            <input type="hidden" id="select-codice">
-        </div>
 
-        <div id="area-lavoro" class="section-card" style="display:none;">
+
+        <!-- Sezione Tipologia Ore -->
+        <div class="section-card">
             <label class="label-field">Tipologia e Orario</label>
             <div class="radio-group">
-                <label class="radio-btn"><input type="radio" name="tipo" value="ORDINARIA" checked onchange="updateUI()"> <span>ORDINARIA</span></label>
-                <label id="label-stra" class="radio-btn"><input type="radio" name="tipo" value="STRAORDINARIO" onchange="updateUI()"> <span>STRAORD.</span></label>
-                <label id="label-rep" class="radio-btn"><input type="radio" name="tipo" value="REPERIBILITA" onchange="updateUI()"> <span>REPERIB.</span></label>
+                <label class="radio-btn">
+                    <input type="radio" name="tipo-ore" value="ORDINARIE" checked onchange="updateUI()">
+                    <span>ORE ORDINARIE</span>
+                </label>
+                <label class="radio-btn">
+                    <input type="radio" name="tipo-ore" value="STRAORDINARIE" onchange="updateUI()">
+                    <span>ORE STRAORD.</span>
+                </label>
             </div>
 
-           <div id="box-ore-dirette">
-    <label class="label-field">Ore Lavorate (Max 8h)</label>
-    <input type="number" id="ore-ord-manual" class="input-modern" 
-           step="0.25" min="0" max="8" value="0"
-           onblur="checkLimiti(this, 0, 8)">
-</div>
-
-                
+            <!-- Ore Ordinarie (visibile di default) -->
+            <div id="box-ore-dirette">
+                <label class="label-field">Ore Lavorate (Max 8h)</label>
+                <input type="number" id="ore-ord-manual" class="input-modern" 
+                       step="0.25" min="0" max="8" value="0"
+                       onblur="checkLimiti(this, 0, 8)">
             </div>
 
+            <!-- Orari Inizio/Fine (nascosto di default) -->
             <div id="box-orari" style="display:none;">
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-        <div>
-            <label class="label-field">Ora Inizio</label>
-            <input type="time" id="ora-inizio" class="input-modern" 
-                   onblur="validateTimeAndCalculate(this)">
-        </div>
-        <div>
-            <label class="label-field">Ora Fine</label>
-            <input type="time" id="ora-fine" class="input-modern" 
-                   onblur="validateTimeAndCalculate(this)">
-        </div>
-    </div>
-    
-    <div id="preview-calcolo" class="box-riepilogo-ore" style="display:flex;">
-        <div class="badge-ora badge-ord">ORDINARIE <span id="res-ord">0.00</span></div>
-        <div class="badge-ora badge-stra">STRAORD. <span id="res-stra">0.00</span></div>
-    </div>
-</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label class="label-field">Ora Inizio</label>
+                        <input type="time" id="ora-inizio" class="input-modern" 
+                               onblur="validateTimeAndCalculate(this)">
+                    </div>
+                    <div>
+                        <label class="label-field">Ora Fine</label>
+                        <input type="time" id="ora-fine" class="input-modern" 
+                               onblur="validateTimeAndCalculate(this)">
+                    </div>
+                </div>
+                
+                <div id="preview-calcolo" class="box-riepilogo-ore">
+                    <div class="badge-ora badge-ord">ORDINARIE <span id="res-ord">0.00</span></div>
+                    <div class="badge-ora badge-stra">STRAORD. <span id="res-stra">0.00</span></div>
+                </div>
+            </div>
         </div>
 
+        <!-- Card Viaggio -->
         <div class="card-viaggio">
-    <span class="material-symbols-rounded" style="color: #22c55e; font-size: 36px;">directions_car</span>
-
+            <span class="material-symbols-rounded" style="color: #22c55e; font-size: 36px;">directions_car</span>
             <div style="flex-grow: 1;">
                 <div style="font-size: 0.75rem; font-weight: 900; color: #15803d; text-transform: uppercase; letter-spacing: 0.5px;">Ore Viaggio</div>
                 <div style="font-size: 0.65rem; color: #166534; font-weight: 600;">Tempo di spostamento</div>
             </div>
-           <input type="number" id="ore-viaggio" class="input-viaggio" 
-           step="0.5" min="0" max="4" value="0"
-           onblur="checkLimiti(this, 0, 4)">
+            <input type="number" id="ore-viaggio" class="input-viaggio" 
+                   step="0.5" min="0" max="4" value="0"
+                   onblur="checkLimiti(this, 0, 4)">
         </div>
 
+        <!-- Sezione Note e Data -->
         <div class="section-card">
-            <label class="label-field">Note Intervento</label>
-            <textarea id="note" class="input-modern" style="height: 80px; padding-top: 10px;" placeholder="Descrivi il lavoro svolto..."></textarea>
+            <label class="label-field">Note Lavoro</label>
+            <textarea id="note" class="input-modern" style="height: 80px; padding-top: 10px;" placeholder="Descrivi il lavoro di montaggio..."></textarea>
             
-           
+          
 
-            <button onclick="salvaIntervento()" class="btn-primary" style="margin-top: 30px; width: 100%; height: 55px; border-radius: 12px; font-weight: 900; font-size: 1rem; cursor: pointer; background: var(--primary); color: white; border: none; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);">
-                CONFERMA E SALVA
+            <button onclick="salvaIntervento()" class="btn-primary">
+                CONFERMA E SALVA MONTAGGIO
             </button>
         </div>
     </div>
 
-    <script src="nuovo_lavoro.js"></script>
+    <script src="nuovo_lavoro_montaggi.js"></script>
 </body>
 </html>

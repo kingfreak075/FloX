@@ -239,3 +239,471 @@ main {
 .calendar-day.selected.status-error::after {
     background: white;
 }
+
+/* Stili per i filtri stato */
+.filtro-stato {
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid #e2e8f0;
+    background-color: white;
+    color: #475569;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.filtro-stato:hover {
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.filtro-stato-attivo {
+    background-color: var(--primary) !important;
+    color: white !important;
+    border-color: var(--primary) !important;
+}
+
+/* Stili per le card montaggi (se non già presenti) */
+.card-impianto {
+    background: white;
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid #f1f5f9;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-impianto:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.id-tag {
+    background-color: #f1f5f9;
+    color: #475569;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.giro-tag {
+    background-color: #e0f2fe;
+    color: #0369a1;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.indirizzo-titolo {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 10px 0;
+    line-height: 1.4;
+}
+
+.localita-sub {
+    font-size: 0.9rem;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+}
+
+.btn-scheda {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+    min-width: 40px;
+}
+
+.btn-scheda:hover {
+    background-color: color-mix(in srgb, var(--primary) 80%, black);
+}
+
+
+/* STILI PER LA NUOVA CARD MONTAGGI */
+.card-montaggio {
+    background: white;
+    border-radius: 14px;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
+    border: 1px solid #f1f5f9;
+    transition: all 0.25s ease;
+}
+
+.card-montaggio:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+    border-color: #e2e8f0;
+}
+
+/* Codice impianto prominente */
+.codice-impianto {
+    background: linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    display: inline-block;
+}
+
+/* Badge stato migliorato */
+.badge-stato {
+    font-size: 0.8rem;
+    font-weight: 800;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Sezione indirizzo */
+.sezione-indirizzo {
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.testo-indirizzo {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 8px 0;
+    line-height: 1.4;
+}
+
+.localita-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
+.localita-nome {
+    font-weight: 700;
+    color: #475569;
+}
+
+.provincia {
+    background: #e2e8f0;
+    color: #475569;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.cap {
+    font-weight: 600;
+    color: #475569;
+}
+
+.separatore {
+    color: #cbd5e1;
+}
+
+/* Sezione cliente */
+.sezione-cliente {
+    background: #fef7ff;
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    border: 1px solid #f3e8ff;
+}
+
+.nome-cliente {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #7c3aed;
+    line-height: 1.3;
+}
+
+/* Bottoni azione */
+.btn-dettagli {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    transition: all 0.2s ease;
+    margin-left: 10px;
+}
+
+.btn-dettagli:hover {
+    background-color: color-mix(in srgb, var(--primary) 85%, black);
+    transform: translateY(-1px);
+}
+
+.btn-azione-secondaria {
+    background: white;
+    color: #475569;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    transition: all 0.2s ease;
+    margin-left: 10px;
+}
+
+.btn-azione-secondaria:hover {
+    background-color: #f8fafc;
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* Responsive per mobile */
+@media (max-width: 768px) {
+    .card-montaggio {
+        padding: 1.25rem;
+    }
+    
+    .codice-impianto {
+        font-size: 1rem;
+        padding: 5px 12px;
+    }
+    
+    .testo-indirizzo {
+        font-size: 1.05rem;
+    }
+    
+    .btn-dettagli, .btn-azione-secondaria {
+        padding: 8px 14px;
+        font-size: 0.85rem;
+    }
+}
+
+/* STILI PER LA CARD MONTAGGI CON ESPANSIONE */
+.card-montaggio {
+    background: white;
+    border-radius: 14px;
+    padding: 1.25rem 1.25rem 0.5rem 1.25rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
+    border: 1px solid #f1f5f9;
+    transition: all 0.25s ease;
+    cursor: pointer;
+    position: relative;
+}
+
+.card-montaggio:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+    border-color: #e2e8f0;
+}
+
+/* Stato espanso */
+.card-espansa {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12) !important;
+    border-color: #d1d9f0 !important;
+}
+
+/* Codice impianto prominente (sopra) */
+.codice-impianto {
+    color: var(--primary);
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    margin: 0;
+    line-height: 1.2;
+}
+
+/* Badge stato */
+.badge-stato {
+    font-size: 0.8rem;
+    font-weight: 800;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+/* Sezione indirizzo */
+.sezione-indirizzo {
+    margin: 12px 0 15px 0;
+    padding: 0;
+}
+
+.testo-indirizzo {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 6px 0;
+    line-height: 1.3;
+}
+
+.localita-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #64748b;
+    flex-wrap: wrap;
+}
+
+.localita-nome {
+    font-weight: 600;
+    color: #475569;
+}
+
+.provincia {
+    background: #e2e8f0;
+    color: #475569;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 0.8rem;
+}
+
+.cap {
+    font-weight: 600;
+    color: #475569;
+}
+
+.separatore {
+    color: #cbd5e1;
+}
+
+/* Contenuto espanso (cliente + pulsante) */
+.contenuto-espanso {
+    padding: 1rem 0;
+    border-top: 1px solid #f1f5f9;
+    margin-top: 0.5rem;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Sezione cliente */
+.sezione-cliente {
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 0.9rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.nome-cliente {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #475569;
+    line-height: 1.3;
+}
+
+/* Pulsante Scheda */
+.btn-scheda {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+
+
+/* Freccia espansione */
+.material-symbols-rounded[style*="expand_more"] {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+
+/* 1. CODICE IMPIANTO BIANCO SU SFONDO COLORATO */
+.codice-impianto {
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    margin: 0 0 5px 0;
+    line-height: 1.2;
+    /* Rimosso color: var(--primary); e aggiunto sfondo nel JS */
+}
+
+/* 2. PULSANTE SCHEDA PIÙ LARGO */
+.btn-scheda {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 20px; /* Aumentato padding verticale */
+    font-weight: 700;
+    font-size: 0.95rem; /* Leggermente più grande */
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    transition: all 0.2s ease;
+    /* Aggiungi width: 100% nel JS */
+}
+
+.btn-scheda:hover {
+    background-color: color-mix(in srgb, var(--primary) 85%, black);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(99, 102, 241, 0.2);
+}
+
+/* Stili per la sezione date */
+.sezione-date {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 10px;
+    padding: 1rem;
+    margin: 1rem 0;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid var(--primary);
+}
+
+.data-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.data-valore {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #1e293b;
+}

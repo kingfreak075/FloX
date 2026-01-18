@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ParkApp - Scheda Montaggio</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
+</head>
+<body class="bg-app">
+    <div class="app-container">
+        <!-- HEADER -->
+        <header class="app-header">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                <!-- Pulsante Indietro (Lista Montaggi) -->
+                <button onclick="window.location.href='montaggi.html'" class="btn-scheda" style="height: 40px; width: 40px; display: flex; align-items: center; justify-content: center; border: none; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <span class="material-symbols-rounded" style="color: var(--primary);">arrow_back</span>
+                </button>
+                
+                <!-- Titolo e codice impianto -->
+                <div style="flex-grow: 1;">
+                    <h1 style="font-size: 1.25rem; font-weight: 800; color: var(--primary); margin: 0;">Scheda Montaggio</h1>
+                    <p id="codice-impianto-display" style="margin: 0; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;"></p>
+                </div>
+            </div>
+        </header>
+
+        <main style="padding: 1rem;">
+            <!-- CARD PRINCIPALE -->
+            <div id="schedaContenuto" class="card-scheda">
+                <!-- Stato attuale con indicatori rapidi -->
+                <div id="statoSection" style="margin-bottom: 1.5rem;">
+                    <h2 style="font-size: 0.9rem; color: #64748b; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                        <span class="material-symbols-rounded" style="font-size: 18px;">schedule</span>
+                        STATO LAVORAZIONE
+                    </h2>
+                    
+                    <div id="badgeStatoAttuale" style="display: inline-block; margin-bottom: 15px;"></div>
+                    
+                    <!-- Pulsanti rapidi cambio stato -->
+                    <div id="pulsantiStato" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;"></div>
+                </div>
+
+                <!-- Informazioni impianto (sola lettura) -->
+                <div id="infoSection" style="margin-bottom: 2rem;">
+                    <div style="margin-bottom: 1.5rem;">
+                        <h2 style="font-size: 0.9rem; color: #64748b; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                            <span class="material-symbols-rounded" style="font-size: 18px;">location_on</span>
+                            INDIRIZZO
+                        </h2>
+                        <div id="indirizzoTesto" class="testo-scheda"></div>
+                        <div id="localitaTesto" class="testo-secondario"></div>
+                    </div>
+
+                    <div style="margin-bottom: 1.5rem;">
+                        <h2 style="font-size: 0.9rem; color: #64748b; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                            <span class="material-symbols-rounded" style="font-size: 18px;">apartment</span>
+                            CLIENTE
+                        </h2>
+                        <div id="clienteTesto" class="testo-scheda"></div>
+                    </div>
+
+                    <div style="margin-bottom: 1.5rem;">
+                        <h2 style="font-size: 0.9rem; color: #64748b; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                            <span class="material-symbols-rounded" style="font-size: 18px;">construction</span>
+                            TIPO LAVORO
+                        </h2>
+                        <div id="tipoTesto" class="testo-scheda"></div>
+                    </div>
+
+                    <!-- Cronologia -->
+                    <div>
+                        <h2 style="font-size: 0.9rem; color: #64748b; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                            <span class="material-symbols-rounded" style="font-size: 18px;">history</span>
+                            CRONOLOGIA
+                        </h2>
+                        <div id="cronologiaTesto" class="testo-secondario"></div>
+                    </div>
+                </div>
+
+                <!-- MODIFICA CAMPI (nascosta di default) -->
+                <div id="modificaSection" style="display: none;">
+                    <h2 style="font-size: 1rem; color: var(--primary); font-weight: 800; margin-bottom: 1.5rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
+                        MODIFICA DATI
+                    </h2>
+                    
+                    <form id="modificaForm">
+                        <!-- Indirizzo -->
+                        <div class="form-group">
+                            <label for="modificaIndirizzo" class="form-label">Indirizzo *</label>
+                            <input type="text" id="modificaIndirizzo" class="form-input" required>
+                            <div class="form-helper">Es: VIA ROMA 12 BOLOGNA</div>
+                        </div>
+
+                        <!-- Provincia -->
+                        <div class="form-group">
+                            <label for="modificaProvincia" class="form-label">Provincia (2 lettere) *</label>
+                            <input type="text" id="modificaProvincia" class="form-input" maxlength="2" pattern="[A-Z]{2}" required>
+                            <div class="form-helper">Es: BO, FE, RA</div>
+                        </div>
+
+                        <!-- CAP -->
+                        <div class="form-group">
+                            <label for="modificaCap" class="form-label">CAP (5 numeri) *</label>
+                            <input type="text" id="modificaCap" class="form-input" maxlength="5" pattern="\d{5}" required>
+                            <div class="form-helper">Es: 40121</div>
+                        </div>
+
+                        <!-- Cliente -->
+                        <div class="form-group">
+                            <label for="modificaCliente" class="form-label">Cliente *</label>
+                            <input type="text" id="modificaCliente" class="form-input" required>
+                            <div class="form-helper">Nome cliente o condominio</div>
+                        </div>
+
+                        <!-- Tipo lavoro -->
+                        <div class="form-group">
+                            <label for="modificaTipo" class="form-label">Tipo lavoro</label>
+                            <select id="modificaTipo" class="form-input">
+                                <option value="">-- Seleziona tipo --</option>
+                                <option value="CHIAVI IN MANO">CHIAVI IN MANO</option>
+                                <option value="BEX">BEX</option>
+                                <option value="SERVOSCALA">SERVOSCALA</option>
+                                <option value="CANTIERE">CANTIERE</option>
+                            </select>
+                        </div>
+
+                        <!-- Bottoni azione -->
+                        <div style="display: flex; gap: 15px; margin-top: 2rem;">
+                            <button type="button" onclick="annullaModifica()" class="btn-secondario" style="flex: 1;">
+                                Annulla
+                            </button>
+                            <button type="submit" class="btn-primario" style="flex: 1;">
+                                Salva modifiche
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- AZIONI -->
+                <div id="azioniSection" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;">
+                    <button onclick="attivaModifica()" class="btn-azione" style="width: 100%; margin-bottom: 15px;">
+                        <span class="material-symbols-rounded" style="margin-right: 8px;">edit</span>
+                        Modifica dati impianto
+                    </button>
+                    
+                    <button onclick="apriNuovoLavoroMontaggio()" class="btn-azione" style="width: 100%;">
+    <span class="material-symbols-rounded" style="margin-right: 8px;">add</span>
+    Crea nuovo lavoro montaggio
+</button>
+                </div>
+            </div>
+        </main>
+
+        <footer class="app-footer">
+            <span class="footer-text">EDIT BY KINGFREAK Version 1.0</span>
+        </footer>
+    </div>
+
+    <script src="scheda_montaggio.js"></script>
+</body>
+</html>

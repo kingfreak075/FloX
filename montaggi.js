@@ -123,7 +123,24 @@ function renderizzaLista(montaggi) {
                     </div>
                     
                     <!-- Pulsante Scheda -->
-                    
+                    <!-- Aggiungi questa sezione DOPO il cliente e PRIMA del pulsante Scheda -->
+<div style="margin-top: 15px; padding: 12px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #e2e8f0;">
+    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #64748b;">
+        <div>
+            <div style="font-weight: 600; margin-bottom: 2px;">Creato il</div>
+            <div>${mont.created_at ? new Date(mont.created_at).toLocaleDateString('it-IT') : 'Non disponibile'}</div>
+        </div>
+        <div style="text-align: right;">
+            <div style="font-weight: 600; margin-bottom: 2px;">Modificato il</div>
+            <div>${mont.updated_at ? new Date(mont.updated_at).toLocaleDateString('it-IT') : 'Non disponibile'}</div>
+        </div>
+    </div>
+    
+    <!-- Opzionale: Mostra anche l'ora -->
+    <div style="font-size: 0.75rem; color: #94a3b8; text-align: center; margin-top: 5px;">
+        ${mont.updated_at ? `Ultima modifica: ${new Date(mont.updated_at).toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'})}` : ''}
+    </div>
+</div>
            <!-- Pulsante Scheda -->
                     <div style="text-align: right; margin-top: 15px;">
                         <button onclick="event.stopPropagation(); apriSchedaMontaggio('${mont.impianto}')" class="btn-scheda" style="width: 100%; justify-content: center;">
@@ -189,8 +206,9 @@ window.toggleEspandiCard = function(index) {
 
 // Funzione placeholder per aprire la scheda
 window.apriSchedaMontaggio = function(codice) {
+    window.location.href = `scheda_montaggio.html?id=${codice}`;
     console.log('Apri scheda per:', codice);
-    alert(`Scheda per ${codice} - Pagina da creare`);
+   
     // window.location.href = `scheda_montaggio.html?id=${codice}`;
 };
 
