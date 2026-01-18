@@ -21,43 +21,190 @@
         .stat-box strong { font-size: 1.2rem; color: var(--primary); }
         #loading-overlay { display: none; text-align: center; padding: 10px; font-weight: 600; color: var(--primary); }
 
-/* Pallino VERDE: 8 ore esatte */
-.calendar-day.status-ok::after {
-    content: '';
-    width: 6px;
-    height: 6px;
-    background-color: #22c55e; /* Verde */
-    border-radius: 50%;
-    position: absolute;
-    bottom: 4px;
-}
+        /* Pallino VERDE: 8 ore esatte */
+        .calendar-day.status-ok::after {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background-color: #22c55e;
+            border-radius: 50%;
+            position: absolute;
+            bottom: 4px;
+        }
 
-/* Pallino GIALLO: Meno di 8 ore */
-.calendar-day.status-warning::after {
-    content: '';
-    width: 6px;
-    height: 6px;
-    background-color: #f59e0b; /* Giallo/Arancio */
-    border-radius: 50%;
-    position: absolute;
-    bottom: 4px;
-}
+        /* Pallino GIALLO: Meno di 8 ore */
+        .calendar-day.status-warning::after {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background-color: #f59e0b;
+            border-radius: 50%;
+            position: absolute;
+            bottom: 4px;
+        }
 
-/* Pallino ROSSO: Più di 8 ore o 0 ore nei feriali */
-.calendar-day.status-error::after {
-    content: '';
-    width: 6px;
-    height: 6px;
-    background-color: #ef4444; /* Rosso */
-    border-radius: 50%;
-    position: absolute;
-    bottom: 4px;
-}
+        /* Pallino ROSSO: Più di 8 ore o 0 ore nei feriali */
+        .calendar-day.status-error::after {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background-color: #ef4444;
+            border-radius: 50%;
+            position: absolute;
+            bottom: 4px;
+        }
 
+        /* Statistiche */
+        .stat-report {
+            transition: all 0.2s ease;
+            cursor: default;
+        }
 
+        .stat-report:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
 
+        /* Progress bar */
+        .progress-container {
+            width: 100%;
+            height: 24px;
+            background-color: #e5e7eb;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
 
+        .progress-bar {
+            height: 100%;
+            border-radius: 12px;
+            background: linear-gradient(90deg, #2563eb, #3b82f6);
+            transition: width 0.5s ease;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 0.8rem;
+        }
 
+        /* Pulsante report principale */
+        .btn-report-main {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 14px 20px;
+            font-weight: 800;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 15px 0;
+            width: 100%;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-report-main:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-report-main.active {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+        }
+
+        /* Contenitore report - nascosto inizialmente */
+        #report-container {
+            display: none;
+            animation: fadeIn 0.4s ease;
+            margin-bottom: 20px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Pulsante statistiche avanzate */
+        .btn-stats {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 16px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 15px;
+            width: 100%;
+        }
+
+        .btn-stats:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(139, 92, 246, 0.3);
+        }
+
+        .btn-close-stats {
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-weight: 700;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-close-stats:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+        }
+
+        /* Titolo report */
+        .report-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        /* Per mobile */
+        @media (max-width: 480px) {
+            .stat-report {
+                padding: 12px 8px !important;
+            }
+            .stat-report div:first-child {
+                font-size: 0.6rem !important;
+            }
+            .stat-report div:nth-child(2) {
+                font-size: 1.3rem !important;
+            }
+            
+            .stats-grid-main {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+            
+            .btn-report-main {
+                padding: 12px 16px;
+                font-size: 0.85rem;
+            }
+        }
     </style>
 </head>
 <body class="bg-app">
@@ -78,10 +225,156 @@
         <main style="padding: 1rem;">
             <div id="loading-overlay">Caricamento dati...</div>
             
-            <div class="section-card" style="padding: 5px;">
+            <!-- PULSANTE PRINCIPALE PER VISUALIZZARE IL REPORT -->
+            <button id="btn-show-report" class="btn-report-main" onclick="toggleReport()">
+                <span class="material-symbols-rounded">summarize</span>
+                VISUALIZZA REPORT MENSILE
+            </button>
+            
+            <!-- CONTENITORE REPORT COMPLETO (NASCOSTO INIZIALMENTE) -->
+            <div id="report-container">
+                <!-- TITOLO REPORT CON PULSANTE CHIUDI -->
+                <div class="report-title">
+                    <h2 id="report-mese-titolo" style="font-weight: 800; color: var(--primary); margin: 0;">
+                        Report Mensile
+                    </h2>
+                    <button class="btn-close-stats" onclick="toggleReport()">
+                        <span class="material-symbols-rounded">close</span>
+                        CHIUDI REPORT
+                    </button>
+                </div>
+                
+                <!-- REPORT MENSILE PRINCIPALE -->
+                <div class="section-card" style="margin-bottom: 15px;">
+                    <!-- RIGA 1: Ore principali -->
+                    <div class="stats-grid-main" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px;">
+                        <!-- Ore Ordinarie -->
+                        <div class="stat-report" style="text-align: center; padding: 12px; background: #eff6ff; border-radius: 10px;">
+                            <div style="font-size: 0.7rem; font-weight: 800; color: #2563eb; margin-bottom: 5px;">ORE ORD.</div>
+                            <div id="report-ore-ord" style="font-size: 1.8rem; font-weight: 900; color: #1e40af;">0</div>
+                            <div id="report-ore-ord-giorni" style="font-size: 0.65rem; color: #64748b;">0 giorni</div>
+                        </div>
+                        
+                        <!-- Ore Straordinarie -->
+                        <div class="stat-report" style="text-align: center; padding: 12px; background: #fef2f2; border-radius: 10px;">
+                            <div style="font-size: 0.7rem; font-weight: 800; color: #dc2626; margin-bottom: 5px;">ORE STRA.</div>
+                            <div id="report-ore-stra" style="font-size: 1.8rem; font-weight: 900; color: #991b1b;">0</div>
+                            <div id="report-ore-stra-giorni" style="font-size: 0.65rem; color: #64748b;">0 giorni</div>
+                        </div>
+                        
+                        <!-- Ore Viaggio -->
+                        <div class="stat-report" style="text-align: center; padding: 12px; background: #f0fdf4; border-radius: 10px;">
+                            <div style="font-size: 0.7rem; font-weight: 800; color: #16a34a; margin-bottom: 5px;">VIAGGIO</div>
+                            <div id="report-ore-viag" style="font-size: 1.8rem; font-weight: 900; color: #166534;">0</div>
+                            <div id="report-ore-viag-giorni" style="font-size: 0.65rem; color: #64748b;">0 giorni</div>
+                        </div>
+                        
+                        <!-- Assenze IN ORE -->
+                        <div class="stat-report" style="text-align: center; padding: 12px; background: #fef3c7; border-radius: 10px;">
+                            <div style="font-size: 0.7rem; font-weight: 800; color: #d97706; margin-bottom: 5px;">ORE ASSENZE</div>
+                            <div id="report-assenze" style="font-size: 1.8rem; font-weight: 900; color: #92400e;">0</div>
+                            <div id="report-assenze-giorni" style="font-size: 0.65rem; color: #64748b;">0 giorni</div>
+                        </div>
+                    </div>
+                    
+                    <!-- PROGRESS BAR -->
+                    <div style="margin: 20px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span style="font-size: 0.8rem; font-weight: 700; color: #475569;">Progresso mensile</span>
+                            <span id="report-progress-percent" style="font-size: 0.8rem; font-weight: 900; color: #3b82f6;">0%</span>
+                        </div>
+                        <div class="progress-container">
+                            <div id="report-progress-bar" class="progress-bar" style="width: 0%">
+                                <span id="report-progress-text">0/0 ore</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- PULSANTE STATISTICHE AVANZATE -->
+                    <button id="btn-show-stats" class="btn-stats" onclick="toggleAdvancedStats()">
+                        <span class="material-symbols-rounded">insights</span>
+                        VISUALIZZA STATISTICHE AVANZATE
+                    </button>
+                    
+                    <!-- STATISTICHE AVANZATE (NASCOSTE) -->
+                    <div id="advanced-stats" style="display: none; margin-top: 20px; padding-top: 15px; border-top: 2px solid #e5e7eb;">
+                        <!-- Contenuto statistiche avanzate -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px;">
+                            <div style="background: #f8fafc; padding: 12px; border-radius: 10px;">
+                                <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 4px;">Giorni lavorativi teorici</div>
+                                <div id="report-giorni-lavorativi" style="font-size: 1rem; font-weight: 900; color: #475569;">0 giorni (0 ore)</div>
+                            </div>
+                            
+                            <div style="background: #f8fafc; padding: 12px; border-radius: 10px;">
+                                <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 4px;">Giorni lavorati effettivi</div>
+                                <div id="report-giorni-lavorati" style="font-size: 1rem; font-weight: 900; color: #2563eb;">0 su 0 giorni</div>
+                            </div>
+                            
+                            <div style="background: #f8fafc; padding: 12px; border-radius: 10px;">
+                                <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 4px;">Media ore/giorno lavorativo</div>
+                                <div id="report-media-ore" style="font-size: 1rem; font-weight: 900; color: #16a34a;">0.00h</div>
+                            </div>
+                            
+                            <div style="background: #f8fafc; padding: 12px; border-radius: 10px;">
+                                <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 4px;">Giorni con straordinari</div>
+                                <div id="report-perc-stra" style="font-size: 1rem; font-weight: 900; color: #d97706;">0%</div>
+                            </div>
+                        </div>
+                        
+                        <!-- DETTAGLIO ASSENZE -->
+                        <div style="background: #fff7ed; border-radius: 10px; padding: 12px; margin-bottom: 15px;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                                <span class="material-symbols-rounded" style="color: #d97706;">event_busy</span>
+                                <div style="font-weight: 800; color: #92400e; font-size: 0.9rem;">DETTAGLIO ASSENZE</div>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 0.7rem; color: #64748b;">Ore totali</div>
+                                    <div id="report-ore-assenze" style="font-size: 1.2rem; font-weight: 900; color: #dc2626;">0 ore</div>
+                                </div>
+                                
+                                <div style="text-align: center;">
+                                    <div style="font-size: 0.7rem; color: #64748b;">Parziali</div>
+                                    <div id="report-assenze-parziali" style="font-size: 1.2rem; font-weight: 900; color: #f59e0b;">0 giorni</div>
+                                </div>
+                                
+                                <div style="text-align: center;">
+                                    <div style="font-size: 0.7rem; color: #64748b;">Totali</div>
+                                    <div id="report-assenze-totali" style="font-size: 1.2rem; font-weight: 900; color: #ef4444;">0 giorni</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- BILANCIO FINALE -->
+                        <div style="background: #f0f9ff; border-radius: 10px; padding: 12px;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                                <span class="material-symbols-rounded" style="color: #0ea5e9;">balance</span>
+                                <div style="font-weight: 800; color: #0369a1; font-size: 0.9rem;">BILANCIO MENSILE</div>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 0.75rem; color: #64748b;">Ore mancanti</div>
+                                    <div id="report-ore-mancanti" style="font-size: 1.4rem; font-weight: 900; color: #dc2626;">0 ore</div>
+                                </div>
+                                
+                                <div style="text-align: center;">
+                                    <div style="font-size: 0.75rem; color: #64748b;">Ore in eccesso</div>
+                                    <div id="report-ore-eccesso" style="font-size: 1.4rem; font-weight: 900; color: #16a34a;">0 ore</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CALENDARIO -->
+            <div class="section-card" style="padding: 5px; margin-top: 15px;">
                 <div id="calendar-container" class="calendar-grid"></div>
             </div>
 
+            <!-- DETTAGLIO GIORNO SELEZIONATO -->
             <div id="day-detail" style="display: none; margin-top: 20px;">
                 <h3 id="selected-date-title" style="font-weight: 800; color: var(--primary); margin: 0 0 10px 5px;"></h3>
                 
@@ -100,5 +393,43 @@
         </footer>
     </div>
     <script src="calendario.js"></script>
+    <script>
+        // Funzione per mostrare/nascondere il report completo
+        function toggleReport() {
+            const reportContainer = document.getElementById('report-container');
+            const btnShow = document.getElementById('btn-show-report');
+            
+            if (reportContainer.style.display === 'none' || reportContainer.style.display === '') {
+                reportContainer.style.display = 'block';
+                btnShow.innerHTML = '<span class="material-symbols-rounded">summarize</span> NASCONDI REPORT MENSILE';
+                btnShow.classList.add('active');
+                
+                // Assicurati che le statistiche avanzate siano chiuse di default
+                document.getElementById('advanced-stats').style.display = 'none';
+                document.getElementById('btn-show-stats').innerHTML = '<span class="material-symbols-rounded">insights</span> VISUALIZZA STATISTICHE AVANZATE';
+                document.getElementById('btn-show-stats').style.background = 'linear-gradient(135deg, #8b5cf6, #7c3aed)';
+            } else {
+                reportContainer.style.display = 'none';
+                btnShow.innerHTML = '<span class="material-symbols-rounded">summarize</span> VISUALIZZA REPORT MENSILE';
+                btnShow.classList.remove('active');
+            }
+        }
+        
+        // Funzione per mostrare/nascondere le statistiche avanzate
+        function toggleAdvancedStats() {
+            const statsDiv = document.getElementById('advanced-stats');
+            const btnShow = document.getElementById('btn-show-stats');
+            
+            if (statsDiv.style.display === 'none' || statsDiv.style.display === '') {
+                statsDiv.style.display = 'block';
+                btnShow.innerHTML = '<span class="material-symbols-rounded">insights</span> NASCONDI STATISTICHE';
+                btnShow.style.background = 'linear-gradient(135deg, #6b7280, #4b5563)';
+            } else {
+                statsDiv.style.display = 'none';
+                btnShow.innerHTML = '<span class="material-symbols-rounded">insights</span> VISUALIZZA STATISTICHE AVANZATE';
+                btnShow.style.background = 'linear-gradient(135deg, #8b5cf6, #7c3aed)';
+            }
+        }
+    </script>
 </body>
 </html>

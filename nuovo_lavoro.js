@@ -47,23 +47,21 @@ document.addEventListener('DOMContentLoaded', () => {
   // Se NON sono in edit, pulisco eventuali residui
   if (mode !== 'edit') localStorage.removeItem('edit_intervento');
 
-  // Visualizzazione impianto coerente con quello che andrà in DB
-  const impiantoBase = getImpiantoBaseFromContext();
-  const elDispImp = document.getElementById('display-impianto');
-  if (elDispImp) elDispImp.innerText = impiantoBase;
-
-  if (impiantoCorrente && impiantoCorrente.indirizzo) {
-    const elInd = document.getElementById('display-indirizzo');
-    if (elInd) elInd.innerText = impiantoCorrente.indirizzo;
-  }
-
   // Data odierna di default
   const elData = document.getElementById('data-lavoro');
   if (elData && !elData.value) elData.valueAsDate = new Date();
 
-  // Modalità EDIT: precompilazione
+  // Visualizzazione impianto
+  const elDispImp = document.getElementById('display-impianto');
+  const elInd = document.getElementById('display-indirizzo');
+
+  // Modalità EDIT: precompilazione COMPLETA
   if (mode === 'edit' && datiEdit) {
     const intervento = JSON.parse(datiEdit);
+
+    // IMPIANTO e INDIRIZZO dall'intervento originale
+    if (elDispImp) elDispImp.innerText = intervento.impianto || 'N/D';
+    if (elInd) elInd.innerText = intervento.indirizzo || '';
 
     // Seleziona card codice
     const cards = Array.from(document.querySelectorAll('.card-codice'));
@@ -114,6 +112,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const btnSalva = document.querySelector('button[onclick="salvaIntervento()"]');
     if (btnSalva) btnSalva.innerText = 'AGGIORNA INTERVENTO';
+    
+  } else {
+    // Modalità NORMALE: usa dati dalla cache
+    const impiantoBase = getImpiantoBaseFromContext();
+    if (elDispImp) elDispImp.innerText = impiantoBase;
+    
+    if (impiantoCorrente && impiantoCorrente.indirizzo && elInd) {
+      elInd.innerText = impiantoCorrente.indirizzo;
+    }
   }
 });
 
@@ -204,15 +211,34 @@ async function salvaIntervento() {
   const tipo = document.querySelector('input[name="tipo"]:checked').value;
   const dataSelezionata = new Date(document.getElementById('data-lavoro').value);
 
-  // ore
+  // Determina indirizzo corretto
+  let indirizzoFinale = '';
+  const mode = new URLSearchParams(window.location.search).get('mode');
+  const datiEdit = mode === 'edit' ? JSON.parse(localStorage.getItem('edit_intervento') || '{}') : null;
+  
+  if (mode === 'edit' && datiEdit && datiEdit.indirizzo) {
+    // In modifica, mantieni l'indirizzo originale dell'intervento
+    indirizzoFinale = datiEdit.indirizzo;
+  } else {
+    // In nuovo, usa dalla cache o dal display
+    if (impiantoCorrente && impiantoCorrente.indirizzo) {
+      indirizzoFinale = impiantoCorrente.indirizzo;
+    } else if (document.getElementById('display-indirizzo')) {
+      indirizzoFinale = document.getElementById('display-indirizzo').innerText;
+    }
+  }
+
+  // CALCOLO ORE
   let oreOrd = 0, oreStra = 0;
   let oraInizioIntervento = '08:00'; // default per campo "data" se ordinaria
+  
   if (tipo === 'ORDINARIA') {
     oreOrd = parseFloat(document.getElementById('ore-ord-manual').value || '0') || 0;
   } else {
     // se presente anteprima, uso quella; altrimenti calcolo
     const anteOrd = parseFloat(document.getElementById('res-ord').innerText || '0') || 0;
     const anteStra = parseFloat(document.getElementById('res-stra').innerText || '0') || 0;
+    
     if ((anteOrd + anteStra) === 0) {
       const res = processHours(
         document.getElementById('ora-inizio').value,
@@ -220,10 +246,13 @@ async function salvaIntervento() {
         tipo,
         dataSelezionata.getDay()
       );
-      oreOrd = res.ord; oreStra = res.stra;
+      oreOrd = res.ord; 
+      oreStra = res.stra;
     } else {
-      oreOrd = anteOrd; oreStra = anteStra;
+      oreOrd = anteOrd; 
+      oreStra = anteStra;
     }
+    
     if (document.getElementById('ora-inizio').value) {
       oraInizioIntervento = document.getElementById('ora-inizio').value;
     }
@@ -234,7 +263,25 @@ async function salvaIntervento() {
     return;
   }
 
-  // impianto (commessa per 13/10, altrimenti base)
+  // CONTROLLO BLOCCAGGIO MESE (se in modifica)
+  if (mode === 'edit' && datiEdit) {
+    const meseIntervento = parseInt(datiEdit.mese);
+    const annoIntervento = parseInt(datiEdit.anno);
+    
+    // Controlla se il mese è bloccato usando la stessa funzione del calendario
+    if (typeof isMeseBloccato === 'function' && isMeseBloccato(meseIntervento, annoIntervento)) {
+      alert("⚠️ Non puoi modificare interventi di mesi bloccati.\nIl mese è stato chiuso per la rendicontazione.");
+      return;
+    }
+    
+    // Controlla se è "ALTRO"
+    if (datiEdit.ch_rep === 'ALTRO') {
+      alert("⚠️ Le voci 'ALTRO' (permessi/ferie/malattia) non possono essere modificate.\n\nSe hai sbagliato, cancella questa voce e inseriscine una nuova.");
+      return;
+    }
+  }
+
+  // IMPIANTO (commessa per 13/10, altrimenti base)
   const impiantoDB = deriveImpiantoForDB(codice);
   if ((codice === '13' || codice === '10')) {
     if (!impiantoDB || impiantoDB.length !== 8) {
@@ -255,7 +302,9 @@ async function salvaIntervento() {
     // campo impianto: coerente con la visualizzazione e con le regole commessa
     impianto: impiantoDB,
 
-    indirizzo: (impiantoCorrente && impiantoCorrente.indirizzo) ? impiantoCorrente.indirizzo : '',
+    // INDIRIZZO: usa quello determinato sopra
+    indirizzo: indirizzoFinale,
+    
     ch_rep: tipo,
     inizio_int: (tipo !== 'ORDINARIA') ? document.getElementById('ora-inizio').value : null,
     fine_int:   (tipo !== 'ORDINARIA') ? document.getElementById('ora-fine').value   : null,
@@ -265,20 +314,18 @@ async function salvaIntervento() {
     ore_viaggio: parseFloat(document.getElementById('ore-viaggio').value || '0') || 0,
     note: document.getElementById('note').value,
 
-    // colonne extra (come in _f)
+    // colonne extra
     data: formatDataOra(dataSelezionata, oraInizioIntervento),
     settimana: getWeekNumber(dataSelezionata),
     "Data/ora creazione": formatDataOra(new Date())
   };
 
-  const mode = new URLSearchParams(window.location.search).get('mode');
   try {
-    if (mode === 'edit') {
-      const interventoOriginale = JSON.parse(localStorage.getItem('edit_intervento'));
+    if (mode === 'edit' && datiEdit) {
       const { error } = await supabaseClient
         .from('fogliolavoro')
         .update(payload)
-        .eq('ID', interventoOriginale.ID);
+        .eq('ID', datiEdit.ID);
       if (error) throw error;
       alert('Intervento aggiornato!');
     } else {
@@ -286,8 +333,10 @@ async function salvaIntervento() {
       if (error) throw error;
       alert('Intervento salvato con successo!');
     }
+    
     localStorage.removeItem('edit_intervento');
     window.location.href = 'parco.html'; // redirect unificato
+    
   } catch (err) {
     alert('Errore durante il salvataggio: ' + err.message);
   }
