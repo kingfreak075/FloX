@@ -394,3 +394,188 @@ function calculateTotalDiff(i, f) {
   let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
   return (diff < 0 ? diff + 1440 : diff) / 60;
 }
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Controllo giorno festivo e gestione UI
+// ─────────────────────────────────────────────────────────────────────────────
+function controllaGiornoFestivo() {
+    const dataInput = document.getElementById('data-lavoro');
+    if (!dataInput || !dataInput.value) return;
+    
+    const data = new Date(dataInput.value);
+   const giornoSettimana = data.getDay();
+const isWeekend = (giornoSettimana === 0 || giornoSettimana === 6);
+const isFestivoFisso = isFestivoNazionale(data);
+const isFestivoMobileCheck = isFestivoMobile(data);
+const isGiornoFestivo = isWeekend || isFestivoFisso || isFestivoMobileCheck;
+    
+    const dataSection = document.getElementById('data-lavoro').closest('.section-card');
+    
+    if (isGiornoFestivo) {
+        // Aggiungi stile festivo
+        dataSection.style.border = '2px solid #ef4444';
+        dataSection.style.backgroundColor = '#fef2f2';
+        
+        // Aggiungi nota "GIORNO FESTIVO"
+        let notaFestivo = dataSection.querySelector('.nota-festivo');
+        if (!notaFestivo) {
+            notaFestivo = document.createElement('div');
+            notaFestivo.className = 'nota-festivo';
+            notaFestivo.style.cssText = `
+                font-size: 0.7rem;
+                font-weight: 700;
+                color: #dc2626;
+                margin-top: 8px;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            `;
+            notaFestivo.innerHTML = `
+                <span class="material-symbols-rounded" style="font-size: 16px;">warning</span>
+                GIORNO FESTIVO - Solo ore straordinarie
+            `;
+            dataSection.appendChild(notaFestivo);
+        }
+        
+        // Controlla se è selezionato "ORDINARIA" e forza cambio
+        const radioOrdinarie = document.querySelector('input[value="ORDINARIA"], input[value="ORDINARIE"]');
+        const radioStraordinarie = document.querySelector('input[value="STRAORDINARIO"], input[value="STRAORDINARIE"]');
+        
+        if (radioOrdinarie && radioOrdinarie.checked) {
+            // Forza cambio a straordinarie
+            if (radioStraordinarie) {
+                radioStraordinarie.checked = true;
+                updateUI();
+                
+                // Mostra messaggio
+                const messaggioDiv = document.createElement('div');
+                messaggioDiv.style.cssText = `
+                    background: #fef3c7;
+                    border: 1px solid #f59e0b;
+                    border-radius: 8px;
+                    padding: 10px;
+                    margin-top: 10px;
+                    font-size: 0.8rem;
+                    color: #92400e;
+                    font-weight: 600;
+                `;
+                messaggioDiv.textContent = '⚠️ Giorno festivo: selezionate automaticamente ore straordinarie';
+                
+                const boxOre = document.getElementById('box-ore-dirette');
+                if (boxOre) {
+                    boxOre.parentNode.insertBefore(messaggioDiv, boxOre.nextSibling);
+                    setTimeout(() => messaggioDiv.remove(), 5000);
+                }
+            }
+        }
+        
+        // Disabilita radio "Ordinarie" se esiste
+        if (radioOrdinarie) {
+            radioOrdinarie.disabled = true;
+            radioOrdinarie.closest('.radio-btn').style.opacity = '0.5';
+            radioOrdinarie.closest('.radio-btn').style.cursor = 'not-allowed';
+        }
+        
+    } else {
+        // Rimuovi stile festivo
+        dataSection.style.border = '';
+        dataSection.style.backgroundColor = '';
+        
+        // Rimuovi nota
+        const notaFestivo = dataSection.querySelector('.nota-festivo');
+        if (notaFestivo) notaFestivo.remove();
+        
+        // Riabilita radio "Ordinarie"
+        const radioOrdinarie = document.querySelector('input[value="ORDINARIA"], input[value="ORDINARIE"]');
+        if (radioOrdinarie) {
+            radioOrdinarie.disabled = false;
+            radioOrdinarie.closest('.radio-btn').style.opacity = '1';
+            radioOrdinarie.closest('.radio-btn').style.cursor = 'pointer';
+        }
+    }
+}
+
+// Esegui controllo al cambio data
+document.addEventListener('DOMContentLoaded', () => {
+    const dataInput = document.getElementById('data-lavoro');
+    if (dataInput) {
+        dataInput.addEventListener('change', controllaGiornoFestivo);
+        
+        // Controlla anche all'inizio se c'è già una data
+        setTimeout(() => controllaGiornoFestivo(), 100);
+    }
+});
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Controllo festività nazionali italiane (fisse)
+// ─────────────────────────────────────────────────────────────────────────────
+function isFestivoNazionale(data) {
+    const giorno = data.getDate();
+    const mese = data.getMonth() + 1; // 0-11 → 1-12
+    
+    // Festività fisse italiane
+    const festivitaFisse = [
+        '01-01', // Capodanno
+        '01-06', // Epifania
+        '04-25', // Liberazione
+        '05-01', // Festa del Lavoro
+        '06-02', // Festa della Repubblica
+        '08-15', // Ferragosto
+        '11-01', // Ognissanti
+        '12-08', // Immacolata
+        '12-25', // Natale
+        '12-26'  // Santo Stefano
+    ];
+    
+    // Formatta mese-giorno come stringa (es: "01-01")
+    const dataStr = `${mese.toString().padStart(2, '0')}-${giorno.toString().padStart(2, '0')}`;
+    
+    return festivitaFisse.includes(dataStr);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Controllo Pasqua (mobile) - Formula di Gauss
+// ─────────────────────────────────────────────────────────────────────────────
+function getPasqua(anno) {
+    const a = anno % 19;
+    const b = Math.floor(anno / 100);
+    const c = anno % 100;
+    const d = Math.floor(b / 4);
+    const e = b % 4;
+    const f = Math.floor((b + 8) / 25);
+    const g = Math.floor((b - f + 1) / 3);
+    const h = (19 * a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4);
+    const k = c % 4;
+    const l = (32 + 2 * e + 2 * i - h - k) % 7;
+    const m = Math.floor((a + 11 * h + 22 * l) / 451);
+    
+    const mesePasqua = Math.floor((h + l - 7 * m + 114) / 31); // 3 o 4
+    const giornoPasqua = ((h + l - 7 * m + 114) % 31) + 1;
+    
+    return new Date(anno, mesePasqua - 1, giornoPasqua);
+}
+
+function isFestivoMobile(data) {
+    const anno = data.getFullYear();
+    const pasqua = getPasqua(anno);
+    
+    // Date relative a Pasqua
+    const lunediAngelo = new Date(pasqua);
+    lunediAngelo.setDate(pasqua.getDate() + 1);
+    
+    // Festività mobili italiane
+    const festivitaMobili = [
+        pasqua,                 // Pasqua
+        lunediAngelo            // Lunedì dell'Angelo (Pasquetta)
+    ];
+    
+    // Controlla se la data corrisponde a una festività mobile
+    return festivitaMobili.some(festivo => 
+        festivo.getDate() === data.getDate() &&
+        festivo.getMonth() === data.getMonth() &&
+        festivo.getFullYear() === data.getFullYear()
+    );
+}

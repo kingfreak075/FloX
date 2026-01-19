@@ -61,14 +61,8 @@ async function fetchMese() {
         if (error) throw error;
         currentEvents = data || [];
         
-        console.log('Dati caricati:', currentEvents.length, 'interventi');
-        if (currentEvents.length > 0) {
-            console.log('Primi 3 interventi:', currentEvents.slice(0, 3));
-        }
-        
         renderCalendar();
-        calcolaReportMensile();
-        setupReportTooltips();
+        calcolaReportMensilePerTecnico();
 
     } catch (err) {
         console.error("ERRORE SUPABASE:", err);
@@ -93,7 +87,7 @@ function renderCalendar() {
     const m = parseInt(selectMese.value) - 1;
     const a = parseInt(selectAnno.value);
     const oggi = new Date();
-    oggi.setHours(0, 0, 0, 0); 
+    oggi.setHours(0, 0, 0, 0);
 
     const primoGiorno = new Date(a, m, 1).getDay();
     const offset = (primoGiorno === 0) ? 6 : primoGiorno - 1;
@@ -107,49 +101,92 @@ function renderCalendar() {
     // Generazione giorni del mese
     for (let d = 1; d <= giorniMese; d++) {
         const dataCorrente = new Date(a, m, d);
-        const giornoSettimana = dataCorrente.getDay(); // 0=Dom, 1=Lun, ..., 6=Sab
+        const giornoSettimana = dataCorrente.getDay();
         const isFeriale = giornoSettimana !== 0 && giornoSettimana !== 6;
         const isGiornoFestivo = isFestivo(dataCorrente);
         const isPassato = dataCorrente <= oggi;
 
-        // Filtro interventi e calcolo ore ordinarie totali del giorno
+        // Filtro interventi del giorno
         const interventiGiorno = currentEvents.filter(e => parseInt(e.giorno) === d);
+        
+        // Calcolo ore totali e tipo
         let oreOrdinarieTotali = 0;
+        let oreStraordinarieTotali = 0;
+        let oreViaggioTotali = 0;
+        let isAssenzaGiorno = false;
+        
         interventiGiorno.forEach(e => {
-            const o = parseFloat(String(e.ore_ord || 0).replace(',', '.'));
-            oreOrdinarieTotali += o;
+            const oreO = parseFloat(String(e.ore_ord || 0).replace(',', '.'));
+            const oreS = parseFloat(String(e.ore_stra || 0).replace(',', '.'));
+            const oreV = parseFloat(String(e.ore_viaggio || 0).replace(',', '.'));
+            oreOrdinarieTotali += oreO;
+            oreStraordinarieTotali += oreS;
+            oreViaggioTotali += oreV;
+            
+            // Verifica se è assenza (codici 72-92 o ALTRO)
+            const codice = e.codice ? e.codice.toString() : '';
+            if ((codice >= '72' && codice <= '92') || e.ch_rep === 'ALTRO') {
+                isAssenzaGiorno = true;
+            }
         });
 
         const dayEl = document.createElement('div');
         dayEl.className = 'calendar-day';
         dayEl.innerText = d;
 
-        // --- 1. COLORAZIONE ESTETICA (Sfondo) ---
+        // --- COLORAZIONE ESTETICA (Sfondo) ---
         if (isGiornoFestivo || giornoSettimana === 0) {
-            // Sfondo rosso chiaro per festivi e domeniche
-            dayEl.style.backgroundColor = '#fee2e2'; 
-            dayEl.style.color = '#b91c1c';           
+            dayEl.style.backgroundColor = '#fee2e2';
+            dayEl.style.color = '#b91c1c';
             dayEl.title = isGiornoFestivo ? "Giorno Festivo" : "Domenica";
             dayEl.style.fontWeight = "800";
         } else if (giornoSettimana === 6) {
-            // Grigio chiaro per i sabati
             dayEl.style.backgroundColor = '#f1f5f9';
         }
 
-        // --- 2. LOGICA AVVISI/PALLINI (Controllo 8h su Lun-Ven, inclusi i festivi) ---
+        // --- LOGICA PALLINI PER TECNICO (SOLO giorni feriali passati) ---
         if (isFeriale && isPassato) {
-            // Essendo un giorno feriale (Lun-Ven), deve avere 8 ore anche se festivo
-            if (oreOrdinarieTotali === 8) {
-                dayEl.classList.add('status-ok');      // VERDE: 8h precise
+            if (isAssenzaGiorno) {
+                // GIORNO CON ASSENZA → VERIFICA SE COMPLETO
+                
+                // Calcola ore TOTALI del giorno (assenza + lavoro + straordinari)
+                const oreTotaliGiorno = oreOrdinarieTotali + oreStraordinarieTotali;
+                const isCompleto = Math.abs(oreTotaliGiorno - 8) < 0.01;
+                
+                if (isCompleto) {
+                    // ASSENZA COMPLETA: 8 ore totali (bordo VERDE)
+                    dayEl.classList.add('status-assenza-completa');
+                    dayEl.title = `Assenza: ${oreOrdinarieTotali.toFixed(2)} ore (8 ore totali - COMPLETO)`;
+                } else {
+                    // ASSENZA INCOMPLETA: meno di 8 ore totali (bordo ROSSO)
+                    dayEl.classList.add('status-assenza-incompleta');
+                    const oreMancanti = 8 - oreTotaliGiorno;
+                    dayEl.title = `Assenza: ${oreOrdinarieTotali.toFixed(2)} ore (mancano ${oreMancanti.toFixed(2)} ore totali)`;
+                }
+                
+            } else if (Math.abs(oreOrdinarieTotali - 8) < 0.01) {
+                // OK: 8 ore ordinarie esatte (senza assenze)
+                dayEl.classList.add('status-ok');
+                dayEl.title = `OK: 8 ore ordinarie`;
             } else if (oreOrdinarieTotali > 0 && oreOrdinarieTotali < 8) {
-                dayEl.classList.add('status-warning'); // GIALLO: Incompleto
+                // ATTENZIONE: Meno di 8 ore (senza assenze)
+                dayEl.classList.add('status-warning');
+                const oreMancanti = 8 - oreOrdinarieTotali;
+                dayEl.title = `Attenzione: ${oreOrdinarieTotali.toFixed(2)} ore ordinarie (mancano ${oreMancanti.toFixed(2)} ore)`;
+            } else if (oreOrdinarieTotali > 8) {
+                // ERRORE: Più di 8 ore ordinarie
+                dayEl.classList.add('status-error');
+                const oreEccesso = oreOrdinarieTotali - 8;
+                dayEl.title = `Errore: ${oreOrdinarieTotali.toFixed(2)} ore ordinarie (${oreEccesso.toFixed(2)} ore in eccesso, dovrebbero essere straordinari?)`;
             } else {
-                // ROSSO: 0 ore inserite o più di 8 ore (es. 8.50)
-                dayEl.classList.add('status-error');   
+                // ERRORE: 0 ore ordinarie
+                dayEl.classList.add('status-error');
+                dayEl.title = `Errore: 0 ore ordinarie inserite`;
             }
         } else if (interventiGiorno.length > 0) {
-            // Per i weekend o giorni futuri, pallino blu standard se ci sono dati
+            // Weekend o futuro con dati → pallino blu standard
             dayEl.classList.add('has-events');
+            dayEl.title = `${interventiGiorno.length} intervento${interventiGiorno.length > 1 ? 'i' : ''}`;
         }
 
         // Click per i dettagli
@@ -445,48 +482,68 @@ function modificaIntervento(intervento) {
         return;
     }
     
+    // DETERMINA LA PAGINA CORRETTA PER LA MODIFICA
+    let urlDestinazione = '';
+    
+    if (intervento.ch_rep === 'MONTAGGIO') {
+        // MONTAGGIO → va a nuovo_lavoro_montaggi.html con parametro edit
+        urlDestinazione = `nuovo_lavoro_montaggi.html?id=${intervento.impianto}&mode=edit`;
+    } else {
+        // ALTRI TIPI (ORDINARIA, STRAORDINARIO, REPERIBILITÀ) → va a nuovo_lavoro.html
+        urlDestinazione = `nuovo_lavoro.html?id=${intervento.impianto}&mode=edit`;
+    }
+    
+    // Salva i dati dell'intervento per la modifica
     localStorage.setItem('edit_intervento', JSON.stringify(intervento));
-    window.location.href = `nuovo_lavoro.html?id=${intervento.impianto}&mode=edit`;
+    
+    console.log('Reindirizzamento a:', urlDestinazione);
+    
+    // Reindirizza alla pagina corretta
+    window.location.href = urlDestinazione;
 }
 
-// FUNZIONE REPORT MENSILE
-// FUNZIONE REPORT MENSILE (con correzioni per assenze in ore e giorni corretti)
-function calcolaReportMensile() {
+// ============================================================================
+// FUNZIONI REPORT MENSILE PER TECNICO (COMPLETAMENTE RISCRITTE)
+// ============================================================================
+
+function calcolaReportMensilePerTecnico() {
     const m = parseInt(document.getElementById('select-mese').value);
     const a = parseInt(document.getElementById('select-anno').value);
     
     // Aggiorna titolo
     const titoloElement = document.getElementById('report-mese-titolo');
     if (titoloElement) {
-        titoloElement.innerText = `Report ${mesiNomi[m-1]} ${a}`;
+        titoloElement.innerText = `Report ${mesiNomi[m-1]} ${a} - Autocontrollo Tecnico`;
     }
     
-    console.log('Calcolo report per:', m, '/', a);
-    console.log('Interventi disponibili:', currentEvents.length);
+    console.log('Calcolo report tecnico per:', m, '/', a);
     
     if (currentEvents.length === 0) {
         console.log('Nessun dato, resettando report');
-        resetReport();
+        resetReportTecnico();
         return;
     }
     
-    // CODICI ASSENZE (72-92 inclusi)
+    // ============================================================================
+    // 1. RACCOLTA DATI BASE
+    // ============================================================================
+    
     const CODICI_ASSENZE = [];
     for (let i = 72; i <= 92; i++) {
         CODICI_ASSENZE.push(i.toString());
     }
     
-    // INIZIALIZZA CONTATORI
+    // Mappa per raggruppare per giorno
+    const giorniMap = new Map();
+    
+    // Contatori globali
     let totOreOrdinarie = 0;
     let totOreStraordinarie = 0;
     let totOreViaggio = 0;
     let totOreAssenza = 0;
-    let totOreLavoroVero = 0;
+    let totGiorniConAssenza = 0;
     
-    // Mappa per raggruppare per giorno
-    const giorniMap = new Map();
-    
-    // PRIMA FASE: Processa TUTTI gli interventi
+    // Processa TUTTI gli interventi
     currentEvents.forEach(e => {
         const giorno = parseInt(e.giorno);
         const codice = e.codice ? e.codice.toString() : '';
@@ -499,155 +556,268 @@ function calcolaReportMensile() {
         // Inizializza giorno se non esiste
         if (!giorniMap.has(giorno)) {
             giorniMap.set(giorno, {
-                oreOrdTotali: 0,
-                oreOrdLavoro: 0,
-                oreStra: 0,
-                oreViag: 0,
+                oreOrdinarie: 0,
+                oreStraordinarie: 0,
+                oreViaggio: 0,
                 oreAssenza: 0,
-                oreLavoroVero: 0
+                isAssenzaGiorno: false,
+                isFeriale: false,
+                isFestivo: false,
+                isPassato: false
             });
         }
         
         const datiGiorno = giorniMap.get(giorno);
         
-        // Aggiorna totali globali
-        totOreOrdinarie += oreO;
-        datiGiorno.oreOrdTotali += oreO;
+        // Aggiorna totali
+        datiGiorno.oreOrdinarie += oreO;
+        datiGiorno.oreStraordinarie += oreS;
+        datiGiorno.oreViaggio += oreV;
         
-        // SE È ASSENZA
+        totOreOrdinarie += oreO;
+        totOreStraordinarie += oreS;
+        totOreViaggio += oreV;
+        
+        // Gestione assenze
         if (isAssenza) {
+            datiGiorno.isAssenzaGiorno = true;
             datiGiorno.oreAssenza += oreO;
             totOreAssenza += oreO;
-            
-            if (oreS > 0) {
-                datiGiorno.oreStra += oreS;
-                totOreStraordinarie += oreS;
-                datiGiorno.oreLavoroVero += oreS;
-                totOreLavoroVero += oreS;
-            }
-            
-            if (oreV > 0) {
-                datiGiorno.oreViag += oreV;
-                totOreViaggio += oreV;
-            }
-        } 
-        // SE È LAVORO NORMALE
-        else {
-            datiGiorno.oreOrdLavoro += oreO;
-            datiGiorno.oreLavoroVero += oreO;
-            totOreLavoroVero += oreO;
-            
-            if (oreS > 0) {
-                datiGiorno.oreStra += oreS;
-                datiGiorno.oreLavoroVero += oreS;
-                totOreStraordinarie += oreS;
-                totOreLavoroVero += oreS;
-            }
-            
-            if (oreV > 0) {
-                datiGiorno.oreViag += oreV;
-                totOreViaggio += oreV;
-            }
         }
     });
     
-    console.log('Totale ore ordinarie:', totOreOrdinarie);
-    console.log('Totale ore lavoro vero:', totOreLavoroVero);
-    console.log('Totale ore assenza:', totOreAssenza);
+    // ============================================================================
+    // 2. ANALISI GIORNO PER GIORNO (PER TECNICO)
+    // ============================================================================
     
-    // SECONDA FASE: Calcola statistiche per giorno
-    const giorniConLavoroVero = new Set();
-    const giorniConStra = new Set();
-    const giorniConViag = new Set();
-    const giorniConAssenza = new Set();
-    const giorniAssenzaParziale = new Set();
-    const giorniAssenzaTotale = new Set();
-    
-    giorniMap.forEach((dati, giorno) => {
-        const oreLavoroVero = Math.round(dati.oreLavoroVero * 100) / 100;
-        const oreStra = Math.round(dati.oreStra * 100) / 100;
-        const oreViag = Math.round(dati.oreViag * 100) / 100;
-        const oreAss = Math.round(dati.oreAssenza * 100) / 100;
-        
-        if (oreLavoroVero > 0.009) {
-            giorniConLavoroVero.add(giorno);
-        }
-        if (oreStra > 0.009) {
-            giorniConStra.add(giorno);
-        }
-        if (oreViag > 0.009) {
-            giorniConViag.add(giorno);
-        }
-        if (oreAss > 0.009) {
-            giorniConAssenza.add(giorno);
-            
-            if (oreAss >= 7.99 && oreAss <= 8.01) {
-                giorniAssenzaTotale.add(giorno);
-            } else {
-                giorniAssenzaParziale.add(giorno);
-            }
-        }
-    });
-    
-    // TERZA FASE: Calcola ore teoriche del mese
     const giorniMese = new Date(a, m, 0).getDate();
-    let giorniLavorativiTeorici = 0;
-    let oreTeoricheMensili = 0;
+    const oggi = new Date();
+    oggi.setHours(0, 0, 0, 0);
     
-    for (let d = 1; d <= giorniMese; d++) {
-        const dataCorrente = new Date(a, m-1, d);
-        const giornoSettimana = dataCorrente.getDay();
-        const isFestivoCalendario = isFestivo(dataCorrente);
+    // Metriche per tecnico
+    const metricheTecnico = {
+        // Conteggi
+        giorniFerialiTotali: 0,
+        giorniLavorativiTeorici: 0,
         
-        if (giornoSettimana >= 1 && giornoSettimana <= 5 && !isFestivoCalendario) {
-            giorniLavorativiTeorici++;
-            oreTeoricheMensili += 8;
+        // Situazione
+        giorniOk: 0,              // 8 ore esatte, non assenze
+        giorniAssenzaTotale: 0,   // 8 ore di assenza
+        giorniAssenzaParziale: 0, // <8 ore di assenza
+        giorniMenoDi8h: 0,        // <8 ore ordinarie, non assenze
+        giorniPiuDi8h: 0,         // >8 ore ordinarie (ERRORE!)
+        giorniSenzaDati: 0,       // 0 ore, non assenze
+        
+        // Ore
+        oreOrdinarieLavorate: 0,  // ore ordinarie NON assenza
+        oreMancantiTotali: 0,
+        oreEccessoTotali: 0,
+        
+        // Lista problemi
+        giorniProblema: []
+    };
+    
+    // Analizza ogni giorno del mese
+    for (let giorno = 1; giorno <= giorniMese; giorno++) {
+        const dataCorrente = new Date(a, m-1, giorno);
+        const giornoSettimana = dataCorrente.getDay();
+        const isFeriale = giornoSettimana >= 1 && giornoSettimana <= 5;
+        const isFestivoCalendario = isFestivo(dataCorrente);
+        const isPassato = dataCorrente <= oggi;
+        
+        const datiGiorno = giorniMap.get(giorno) || {
+            oreOrdinarie: 0,
+            oreStraordinarie: 0,
+            oreViaggio: 0,
+            oreAssenza: 0,
+            isAssenzaGiorno: false,
+            isFeriale: isFeriale,
+            isFestivo: isFestivoCalendario,
+            isPassato: isPassato
+        };
+        
+        // Aggiorna flag nel map
+        datiGiorno.isFeriale = isFeriale;
+        datiGiorno.isFestivo = isFestivoCalendario;
+        datiGiorno.isPassato = isPassato;
+        
+        // Solo per giorni feriali NON festivi
+        if (isFeriale && !isFestivoCalendario) {
+            metricheTecnico.giorniFerialiTotali++;
+            
+            // Se è un giorno lavorativo teorico (passato)
+            if (isPassato) {
+                metricheTecnico.giorniLavorativiTeorici++;
+            }
+            
+            const oreOrd = datiGiorno.oreOrdinarie;
+            const isAssenza = datiGiorno.isAssenzaGiorno;
+            
+            // LOGICA PER TECNICO
+            if (isAssenza) {
+                // GIORNO DI ASSENZA
+                if (oreOrd >= 7.99 && oreOrd <= 8.01) {
+                    metricheTecnico.giorniAssenzaTotale++;
+                } else {
+                    metricheTecnico.giorniAssenzaParziale++;
+                }
+            } else {
+                // GIORNO DI LAVORO
+                metricheTecnico.oreOrdinarieLavorate += oreOrd;
+                
+                if (Math.abs(oreOrd - 8) < 0.01) {
+                    // PERFETTO: 8 ore esatte
+                    metricheTecnico.giorniOk++;
+                } else if (oreOrd === 0) {
+                    // PROBLEMA: Nessuna ora inserita
+                    metricheTecnico.giorniSenzaDati++;
+                    metricheTecnico.oreMancantiTotali += 8;
+                    
+                    // Aggiungi alla lista problemi
+                    if (isPassato) {
+                        metricheTecnico.giorniProblema.push({
+                            giorno: giorno,
+                            problema: "NESSUNA ORA INSERITA",
+                            oreMancanti: 8,
+                            oreInserite: 0
+                        });
+                    }
+                } else if (oreOrd < 8) {
+                    // PROBLEMA: Meno di 8 ore
+                    metricheTecnico.giorniMenoDi8h++;
+                    const oreMancanti = 8 - oreOrd;
+                    metricheTecnico.oreMancantiTotali += oreMancanti;
+                    
+                    // Aggiungi alla lista problemi
+                    if (isPassato) {
+                        metricheTecnico.giorniProblema.push({
+                            giorno: giorno,
+                            problema: `SOLO ${oreOrd.toFixed(2)} ORE`,
+                            oreMancanti: oreMancanti,
+                            oreInserite: oreOrd
+                        });
+                    }
+                } else if (oreOrd > 8) {
+                    // PROBLEMA: Più di 8 ore ordinarie (dovrebbero essere straordinari)
+                    metricheTecnico.giorniPiuDi8h++;
+                    const oreEccesso = oreOrd - 8;
+                    metricheTecnico.oreEccessoTotali += oreEccesso;
+                    
+                    // Aggiungi alla lista problemi
+                    if (isPassato) {
+                        metricheTecnico.giorniProblema.push({
+                            giorno: giorno,
+                            problema: `${oreOrd.toFixed(2)} ORE (ECCESSO)`,
+                            oreMancanti: 0,
+                            oreInserite: oreOrd,
+                            oreEccesso: oreEccesso
+                        });
+                    }
+                }
+            }
         }
     }
     
-    // QUARTA FASE: Calcola percentuale completamento
+    // ============================================================================
+    // 3. CALCOLO METRICHE DERIVATE
+    // ============================================================================
+    
+    // Ore teoriche del mese
+    const oreTeoricheMensili = metricheTecnico.giorniLavorativiTeorici * 8;
+    
+    // Percentuale completamento (SOLO ore ordinarie lavorate, ESCLUSE assenze)
     const percentCompletato = oreTeoricheMensili > 0 ? 
-        Math.min(100, (totOreOrdinarie / oreTeoricheMensili) * 100) : 0;
+        Math.min(100, (metricheTecnico.oreOrdinarieLavorate / oreTeoricheMensili) * 100) : 0;
     
-    const oreMancanti = Math.max(0, oreTeoricheMensili - totOreOrdinarie);
-    const oreInEccesso = Math.max(0, totOreOrdinarie - oreTeoricheMensili);
+    // Giorni da verificare (tutti i problemi)
+    const giorniDaVerificare = 
+        metricheTecnico.giorniMenoDi8h + 
+        metricheTecnico.giorniPiuDi8h + 
+        metricheTecnico.giorniSenzaDati;
     
-    const giorniLavoratiEffettivi = giorniConLavoroVero.size;
-    const mediaOreLavoroPerGiorno = giorniLavoratiEffettivi > 0 ? 
-        (totOreLavoroVero / giorniLavoratiEffettivi).toFixed(2) : "0.00";
+    // Media ore ordinarie per giorno lavorato (escluse assenze)
+    const giorniLavoratiEffettivi = metricheTecnico.giorniOk + metricheTecnico.giorniMenoDi8h + metricheTecnico.giorniPiuDi8h;
+    const mediaOrePerGiorno = giorniLavoratiEffettivi > 0 ? 
+        (metricheTecnico.oreOrdinarieLavorate / giorniLavoratiEffettivi).toFixed(2) : "0.00";
+    
+    // Percentuale giorni con straordinari
+    let giorniConStraordinari = 0;
+    giorniMap.forEach(dati => {
+        if (dati.oreStraordinarie > 0.01) {
+            giorniConStraordinari++;
+        }
+    });
     
     const percentGiorniStra = giorniLavoratiEffettivi > 0 ? 
-        ((giorniConStra.size / giorniLavoratiEffettivi) * 100).toFixed(1) : "0.0";
+        ((giorniConStraordinari / giorniLavoratiEffettivi) * 100).toFixed(1) : "0.0";
     
-    // QUINTA FASE: Aggiorna UI con CORREZIONI
-    // 1. ORE ORDINARIE TOTALI
+    // ============================================================================
+    // 4. AGGIORNAMENTO INTERFACCIA
+    // ============================================================================
+    
+    // A. SITUAZIONE RAPIDA
+    document.getElementById('giorni-ok').innerText = metricheTecnico.giorniOk;
+    document.getElementById('giorni-da-verificare').innerText = giorniDaVerificare;
+    document.getElementById('ore-mancanti-totali').innerText = metricheTecnico.oreMancantiTotali.toFixed(0) + 'h';
+    document.getElementById('straordinari-totali').innerText = totOreStraordinarie.toFixed(0) + 'h';
+    
+    // B. CHECKLIST
+    aggiornaChecklist(
+        metricheTecnico.oreMancantiTotali === 0,
+        giorniDaVerificare === 0,
+        metricheTecnico.oreEccessoTotali === 0 || metricheTecnico.giorniPiuDi8h === 0
+    );
+    
+    // C. LISTA GIORNI PROBLEMATICI
+    aggiornaListaProblemi(metricheTecnico.giorniProblema, m, a);
+    
+    // D. METRICHE PRINCIPALI (esistenti)
     document.getElementById('report-ore-ord').innerText = totOreOrdinarie.toFixed(2);
-    const giorniLavoroTesto = giorniConLavoroVero.size === 1 ? 'giorno' : 'giorni';
+    
+    // Calcola giorni con lavoro (escluse assenze)
+    let giorniConLavoro = 0;
+    giorniMap.forEach(dati => {
+        if (dati.oreOrdinarie > 0.01 && !dati.isAssenzaGiorno) {
+            giorniConLavoro++;
+        }
+    });
     document.getElementById('report-ore-ord-giorni').innerText = 
-        `${giorniConLavoroVero.size} ${giorniLavoroTesto}`;
+        `${giorniConLavoro} ${giorniConLavoro === 1 ? 'giorno' : 'giorni'}`;
     
-    // 2. ORE STRAORDINARIE
     document.getElementById('report-ore-stra').innerText = totOreStraordinarie.toFixed(2);
-    const giorniStraTesto = giorniConStra.size === 1 ? 'giorno' : 'giorni';
+    
+    // Calcola giorni con straordinari
+    let giorniConStra = 0;
+    giorniMap.forEach(dati => {
+        if (dati.oreStraordinarie > 0.01) {
+            giorniConStra++;
+        }
+    });
     document.getElementById('report-ore-stra-giorni').innerText = 
-        `${giorniConStra.size} ${giorniStraTesto}`;
+        `${giorniConStra} ${giorniConStra === 1 ? 'giorno' : 'giorni'}`;
     
-    // 3. ORE VIAGGIO
     document.getElementById('report-ore-viag').innerText = totOreViaggio.toFixed(2);
-    const giorniViagTesto = giorniConViag.size === 1 ? 'giorno' : 'giorni';
+    
+    // Calcola giorni con viaggio
+    let giorniConViag = 0;
+    giorniMap.forEach(dati => {
+        if (dati.oreViaggio > 0.01) {
+            giorniConViag++;
+        }
+    });
     document.getElementById('report-ore-viag-giorni').innerText = 
-        `${giorniConViag.size} ${giorniViagTesto}`;
+        `${giorniConViag} ${giorniConViag === 1 ? 'giorno' : 'giorni'}`;
     
-    // 4. ASSENZE IN ORE (CORRETTO!)
+    // E. ASSENZE
     document.getElementById('report-assenze').innerText = totOreAssenza.toFixed(2);
-    const giorniAssenzaTesto = giorniConAssenza.size === 1 ? 'giorno' : 'giorni';
+    const giorniAssenzaTot = metricheTecnico.giorniAssenzaTotale + metricheTecnico.giorniAssenzaParziale;
     document.getElementById('report-assenze-giorni').innerText = 
-        `${giorniConAssenza.size} ${giorniAssenzaTesto}`;
+        `${giorniAssenzaTot} ${giorniAssenzaTot === 1 ? 'giorno' : 'giorni'}`;
     
-    // 5. PROGRESS BAR
+    // F. PROGRESS BAR
     const progressBar = document.getElementById('report-progress-bar');
     document.getElementById('report-progress-text').innerText = 
-        `${totOreOrdinarie.toFixed(0)}/${oreTeoricheMensili} ore`;
+        `${metricheTecnico.oreOrdinarieLavorate.toFixed(0)}/${oreTeoricheMensili} ore`;
     progressBar.style.width = `${percentCompletato}%`;
     document.getElementById('report-progress-percent').innerText = 
         `${percentCompletato.toFixed(1)}%`;
@@ -663,20 +833,135 @@ function calcolaReportMensile() {
         progressBar.style.background = 'linear-gradient(90deg, #ef4444, #f87171)';
     }
     
-    // SESTA FASE: Statistiche avanzate
+    // G. STATISTICHE AVANZATE
     updateAdvancedStats(
-        giorniLavorativiTeorici,
+        metricheTecnico.giorniLavorativiTeorici,
         oreTeoricheMensili,
-        mediaOreLavoroPerGiorno,
+        mediaOrePerGiorno,
         percentGiorniStra,
-        totOreAssenza,  // Passa le ORE, non i giorni
-        giorniAssenzaParziale.size,
-        giorniAssenzaTotale.size,
-        giorniConLavoroVero.size,
+        totOreAssenza,
+        metricheTecnico.giorniAssenzaParziale,
+        metricheTecnico.giorniAssenzaTotale,
+        giorniLavoratiEffettivi,
         giorniMese,
-        oreMancanti,
-        oreInEccesso
+        metricheTecnico.oreMancantiTotali,
+        metricheTecnico.oreEccessoTotali
     );
+}
+
+function aggiornaChecklist(check1Ok, check2Ok, check3Ok) {
+    // Checkbox 1: Tutti i giorni feriali hanno 8 ore ordinarie
+    const check1 = document.getElementById('check1');
+    const icon1 = check1.querySelector('.material-symbols-rounded');
+    if (check1Ok) {
+        check1.classList.add('checked');
+        check1.style.borderColor = '#22c55e';
+        icon1.style.display = 'block';
+    } else {
+        check1.classList.remove('checked');
+        check1.style.borderColor = '#cbd5e1';
+        icon1.style.display = 'none';
+    }
+    
+    // Checkbox 2: Nessun giorno da verificare o correggere
+    const check2 = document.getElementById('check2');
+    const icon2 = check2.querySelector('.material-symbols-rounded');
+    if (check2Ok) {
+        check2.classList.add('checked');
+        check2.style.borderColor = '#22c55e';
+        icon2.style.display = 'block';
+    } else {
+        check2.classList.remove('checked');
+        check2.style.borderColor = '#cbd5e1';
+        icon2.style.display = 'none';
+    }
+    
+    // Checkbox 3: Eccessi convertiti in straordinari dove necessario
+    const check3 = document.getElementById('check3');
+    const icon3 = check3.querySelector('.material-symbols-rounded');
+    if (check3Ok) {
+        check3.classList.add('checked');
+        check3.style.borderColor = '#22c55e';
+        icon3.style.display = 'block';
+    } else {
+        check3.classList.remove('checked');
+        check3.style.borderColor = '#cbd5e1';
+        icon3.style.display = 'none';
+    }
+}
+
+function aggiornaListaProblemi(giorniProblema, mese, anno) {
+    const countElement = document.getElementById('count-problemi');
+    const listaElement = document.getElementById('lista-problemi');
+    
+    countElement.innerText = giorniProblema.length;
+    
+    if (giorniProblema.length === 0) {
+        listaElement.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #64748b;">
+                <span class="material-symbols-rounded" style="font-size: 48px; opacity: 0.3;">check_circle</span>
+                <div style="margin-top: 10px; font-weight: 600;">Nessun problema rilevato!</div>
+                <div style="font-size: 0.8rem; margin-top: 5px;">Tutti i giorni sono in regola.</div>
+            </div>
+        `;
+        return;
+    }
+    
+    listaElement.innerHTML = '';
+    
+    // Ordina per giorno
+    giorniProblema.sort((a, b) => a.giorno - b.giorno);
+    
+    giorniProblema.forEach(problema => {
+        const giornoDiv = document.createElement('div');
+        giornoDiv.className = 'giorno-problema';
+        
+        // Determina il tipo di problema per il colore
+        let coloreBordo = '#ef4444'; // Rosso default
+        if (problema.problema.includes('ECCESSO')) {
+            coloreBordo = '#f59e0b'; // Arancione per eccesso
+        } else if (problema.problema.includes('SOLO')) {
+            coloreBordo = '#3b82f6'; // Blu per ore insufficienti
+        }
+        
+        giornoDiv.style.borderLeftColor = coloreBordo;
+        
+        // Formatta la data
+        const data = new Date(anno, mese-1, problema.giorno);
+        const giornoSettimana = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'][data.getDay()];
+        const dataFormattata = `${problema.giorno} ${mese}/${anno} (${giornoSettimana})`;
+        
+        // Testo del problema
+        let testoProblema = problema.problema;
+        if (problema.oreMancanti > 0) {
+            testoProblema += ` - Mancano ${problema.oreMancanti.toFixed(2)} ore`;
+        }
+        if (problema.oreEccesso > 0) {
+            testoProblema += ` - ${problema.oreEccesso.toFixed(2)} ore in eccesso`;
+        }
+        
+        giornoDiv.innerHTML = `
+            <div class="data">${dataFormattata}</div>
+            <div class="problema">${testoProblema}</div>
+        `;
+        
+        // Click sul giorno problema → mostra il dettaglio
+        giornoDiv.onclick = () => {
+            // Trova l'elemento del giorno nel calendario e cliccalo
+            const giornoElements = document.querySelectorAll('.calendar-day');
+            giornoElements.forEach(el => {
+                if (el.innerText == problema.giorno && !el.classList.contains('header')) {
+                    el.click();
+                    // Scrolla al dettaglio
+                    setTimeout(() => {
+                        document.getElementById('day-detail').scrollIntoView({ behavior: 'smooth' });
+                    }, 100);
+                }
+            });
+        };
+        
+        listaElement.appendChild(giornoDiv);
+    });
 }
 
 function updateAdvancedStats(
@@ -711,9 +996,13 @@ function updateAdvancedStats(
     });
 }
 
-function resetReport() {
+function resetReportTecnico() {
     // Reset valori base
     const baseElements = [
+        {id: 'giorni-ok', value: '0'},
+        {id: 'giorni-da-verificare', value: '0'},
+        {id: 'ore-mancanti-totali', value: '0h'},
+        {id: 'straordinari-totali', value: '0h'},
         {id: 'report-ore-ord', value: '0'},
         {id: 'report-ore-ord-giorni', value: '0 giorni'},
         {id: 'report-ore-stra', value: '0'},
@@ -738,6 +1027,13 @@ function resetReport() {
         progressBar.style.background = 'linear-gradient(90deg, #2563eb, #3b82f6)';
     }
     
+    // Reset checklist
+    aggiornaChecklist(false, false, false);
+    
+    // Reset lista problemi
+    document.getElementById('count-problemi').innerText = '0';
+    document.getElementById('lista-problemi').innerHTML = '';
+    
     // Reset statistiche avanzate
     const advancedElements = [
         'report-giorni-lavorativi',
@@ -755,31 +1051,4 @@ function resetReport() {
         const el = document.getElementById(id);
         if (el) el.innerText = '0';
     });
-}
-
-function setupReportTooltips() {
-    // Tooltip per ore ordinarie
-    const ordEl = document.getElementById('report-ore-ord').parentElement.parentElement;
-    ordEl.title = "Somma di tutte le ore ordinarie lavorate nel mese";
-    ordEl.style.cursor = "help";
-    
-    // Tooltip per ore straordinarie
-    const straEl = document.getElementById('report-ore-stra').parentElement.parentElement;
-    straEl.title = "Somma di tutte le ore straordinarie lavorate nel mese";
-    straEl.style.cursor = "help";
-    
-    // Tooltip per ore viaggio
-    const viagEl = document.getElementById('report-ore-viag').parentElement.parentElement;
-    viagEl.title = "Somma di tutte le ore di viaggio nel mese";
-    viagEl.style.cursor = "help";
-    
-       // Tooltip per assenze
-    const assenzeEl = document.getElementById('report-assenze').parentElement.parentElement;
-    assenzeEl.title = "Ore totali di assenza (permessi, ferie, malattia)";
-    assenzeEl.style.cursor = "help";
-    
-    // Tooltip per progress bar
-    const progressEl = document.getElementById('report-progress-bar').parentElement.parentElement;
-    progressEl.title = "Progresso ore ordinarie su obiettivo mensile";
-    progressEl.style.cursor = "help";
 }

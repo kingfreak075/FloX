@@ -3,11 +3,20 @@ const SUPABASE_URL = 'https://berlfufnmolyrmxeyqfd.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_a3USDfV7gbuauU2Kd6DuQQ_8PFVElpy';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// === Variabili globali ===
 let datiMontaggio = null;      // Dati del montaggio dalla tabella 'montaggi'
 let codMontaggio = null;       // cod_montaggio (es: "007" o "001")
 const tecnicoLoggato = localStorage.getItem('tecnico_loggato');
+let interventoEditID = null;   // ID per la modalità edit
 
+
+
+
+
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Caricamento iniziale
+// ─────────────────────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
 // Caricamento iniziale
 // ─────────────────────────────────────────────────────────────────────────────
@@ -44,10 +53,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('display-indirizzo').textContent = datiMontaggio.Indirizzo || 'Indirizzo non disponibile';
         document.getElementById('display-cliente').textContent = datiMontaggio.cliente || 'Cliente non specificato';
         
-        // 3. DATA ODIIERNA DI DEFAULT
+        // 3. CONTROLLO MODALITÀ EDIT
+        const mode = urlParams.get('mode');
+        const datiEdit = localStorage.getItem('edit_intervento');
+        
+        if (mode === 'edit' && datiEdit) {
+            const intervento = JSON.parse(datiEdit);
+            console.log('Modalità EDIT montaggio:', intervento);
+            
+            // Precompila i campi con i dati dell'intervento
+            precompilaModifica(intervento);
+            
+            // Cambia testo pulsante
+            const btnSalva = document.querySelector('button[onclick="salvaIntervento()"]');
+            if (btnSalva) {
+                btnSalva.innerText = 'AGGIORNA MONTAGGIO';
+            }
+            
+            // Salva ID per l'aggiornamento
+            interventoEditID = intervento.ID;
+        } else {
+            // Modalità NORMALE: data odierna di default
+            const elData = document.getElementById('data-lavoro');
+            if (elData && !elData.value) {
+                elData.valueAsDate = new Date();
+            }
+        }
+
+        // 4. CONTROLLO GIORNO FESTIVO
         const elData = document.getElementById('data-lavoro');
-        if (elData && !elData.value) {
-            elData.valueAsDate = new Date();
+        if (elData) {
+            elData.addEventListener('change', controllaGiornoFestivo);
+            setTimeout(() => controllaGiornoFestivo(), 200);
         }
 
     } catch (error) {
@@ -56,6 +93,161 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = 'montaggi.html';
     }
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Funzione per precompilare i campi in modalità edit
+// ─────────────────────────────────────────────────────────────────────────────
+function precompilaModifica(intervento) {
+    console.log('Precompilazione montaggio:', intervento);
+    
+    // Data lavoro
+    const yyyy = String(intervento.anno);
+    const mm = String(intervento.mese).padStart(2, '0');
+    const dd = String(intervento.giorno).padStart(2, '0');
+    const dataInput = document.getElementById('data-lavoro');
+    if (dataInput) {
+        dataInput.value = `${yyyy}-${mm}-${dd}`;
+    }
+    
+    // Tipo ore - Determina se sono straordinarie o ordinarie
+    const radioOrdinarie = document.querySelector('input[value="ORDINARIE"]');
+    const radioStraordinarie = document.querySelector('input[value="STRAORDINARIE"]');
+    
+    if (intervento.ore_stra > 0 || (intervento.inizio_int && intervento.fine_int)) {
+        // Ha ore straordinarie o orari specifici → Straordinarie
+        if (radioStraordinarie) {
+            radioStraordinarie.checked = true;
+            updateUI();
+            
+            // Imposta orari se disponibili
+            if (intervento.inizio_int && intervento.fine_int) {
+                document.getElementById('ora-inizio').value = intervento.inizio_int.substring(0, 5);
+                document.getElementById('ora-fine').value = intervento.fine_int.substring(0, 5);
+                calcolaOre();
+            }
+        }
+    } else {
+        // Solo ore ordinarie
+        if (radioOrdinarie) {
+            radioOrdinarie.checked = true;
+            updateUI();
+            document.getElementById('ore-ord-manual').value = intervento.ore_ord || 0;
+        }
+    }
+    
+    // Ore viaggio
+    document.getElementById('ore-viaggio').value = intervento.ore_viaggio || 0;
+    
+    // Note
+    document.getElementById('note').value = intervento.note || '';
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Controllo giorno festivo e gestione UI
+// ─────────────────────────────────────────────────────────────────────────────
+function controllaGiornoFestivo() {
+    const dataInput = document.getElementById('data-lavoro');
+    if (!dataInput || !dataInput.value) return;
+    
+    const data = new Date(dataInput.value);
+    const giornoSettimana = data.getDay();
+const isWeekend = (giornoSettimana === 0 || giornoSettimana === 6);
+const isFestivoFisso = isFestivoNazionale(data);
+const isFestivoMobileCheck = isFestivoMobile(data);
+const isGiornoFestivo = isWeekend || isFestivoFisso || isFestivoMobileCheck;
+    const dataSection = dataInput.closest('.section-card');
+    if (!dataSection) return;
+    
+    if (isGiornoFestivo) {
+        // Aggiungi stile festivo
+        dataSection.style.border = '2px solid #ef4444';
+        dataSection.style.backgroundColor = '#fef2f2';
+        
+        // Aggiungi nota "GIORNO FESTIVO"
+        let notaFestivo = dataSection.querySelector('.nota-festivo');
+        if (!notaFestivo) {
+            notaFestivo = document.createElement('div');
+            notaFestivo.className = 'nota-festivo';
+            notaFestivo.style.cssText = `
+                font-size: 0.7rem;
+                font-weight: 700;
+                color: #dc2626;
+                margin-top: 8px;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            `;
+            notaFestivo.innerHTML = `
+                <span class="material-symbols-rounded" style="font-size: 16px;">warning</span>
+                GIORNO FESTIVO - Solo ore straordinarie
+            `;
+            dataSection.appendChild(notaFestivo);
+        }
+        
+        // Controlla se è selezionato "ORDINARIE" e forza cambio
+        const radioOrdinarie = document.querySelector('input[value="ORDINARIE"]');
+        const radioStraordinarie = document.querySelector('input[value="STRAORDINARIE"]');
+        
+        if (radioOrdinarie && radioOrdinarie.checked) {
+            // Forza cambio a straordinarie
+            if (radioStraordinarie) {
+                radioStraordinarie.checked = true;
+                updateUI();
+                
+                // Mostra messaggio
+                const messaggioDiv = document.createElement('div');
+                messaggioDiv.style.cssText = `
+                    background: #fef3c7;
+                    border: 1px solid #f59e0b;
+                    border-radius: 8px;
+                    padding: 10px;
+                    margin-top: 10px;
+                    font-size: 0.8rem;
+                    color: #92400e;
+                    font-weight: 600;
+                `;
+                messaggioDiv.textContent = '⚠️ Giorno festivo: selezionate automaticamente ore straordinarie';
+                
+                const boxOre = document.getElementById('box-ore-dirette');
+                if (boxOre) {
+                    boxOre.parentNode.insertBefore(messaggioDiv, boxOre.nextSibling);
+                    setTimeout(() => messaggioDiv.remove(), 5000);
+                }
+            }
+        }
+        
+        // Disabilita radio "Ordinarie"
+        if (radioOrdinarie) {
+            radioOrdinarie.disabled = true;
+            const radioBtn = radioOrdinarie.closest('.radio-btn');
+            if (radioBtn) {
+                radioBtn.style.opacity = '0.5';
+                radioBtn.style.cursor = 'not-allowed';
+            }
+        }
+        
+    } else {
+        // Rimuovi stile festivo
+        dataSection.style.border = '';
+        dataSection.style.backgroundColor = '';
+        
+        // Rimuovi nota
+        const notaFestivo = dataSection.querySelector('.nota-festivo');
+        if (notaFestivo) notaFestivo.remove();
+        
+        // Riabilita radio "Ordinarie"
+        const radioOrdinarie = document.querySelector('input[value="ORDINARIE"]');
+        if (radioOrdinarie) {
+            radioOrdinarie.disabled = false;
+            const radioBtn = radioOrdinarie.closest('.radio-btn');
+            if (radioBtn) {
+                radioBtn.style.opacity = '1';
+                radioBtn.style.cursor = 'pointer';
+            }
+        }
+    }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UI toggle (Ordinarie vs Straordinarie)
@@ -162,6 +354,9 @@ function calculateTotalDiff(i, f) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Salvataggio intervento montaggio
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Salvataggio/aggiornamento intervento montaggio
+// ─────────────────────────────────────────────────────────────────────────────
 async function salvaIntervento() {
     try {
         // Validazione dati base
@@ -253,18 +448,41 @@ async function salvaIntervento() {
             "Data/ora creazione": formatDataOra(new Date())
         };
 
-        // SALVATAGGIO SU SUPABASE
-        const { error } = await supabaseClient
-            .from('fogliolavoro')
-            .insert([payload]);
-
-        if (error) throw error;
-
-        // SUCCESSO
-        alert('Montaggio salvato con successo!');
+        // DETERMINA SE È INSERT O UPDATE
+        let operazione;
         
-        // REDIRECT a montaggi.html (come richiesto)
-        window.location.href = 'montaggi.html';
+        if (interventoEditID) {
+            // MODALITÀ EDIT: UPDATE
+            console.log('Aggiornamento montaggio ID:', interventoEditID);
+            const { error } = await supabaseClient
+                .from('fogliolavoro')
+                .update(payload)
+                .eq('ID', interventoEditID);
+            
+            operazione = 'update';
+            if (error) throw error;
+            alert('Montaggio aggiornato con successo!');
+        } else {
+            // MODALITÀ NUOVO: INSERT
+            console.log('Inserimento nuovo montaggio');
+            const { error } = await supabaseClient
+                .from('fogliolavoro')
+                .insert([payload]);
+            
+            operazione = 'insert';
+            if (error) throw error;
+            alert('Montaggio salvato con successo!');
+        }
+
+        // Pulisci localStorage e reindirizza
+        localStorage.removeItem('edit_intervento');
+        
+        // REDIRECT
+        if (operazione === 'update') {
+            window.location.href = 'calendario.html';
+        } else {
+            window.location.href = 'montaggi.html';
+        }
 
     } catch (error) {
         console.error('Errore salvataggio:', error);
@@ -290,4 +508,94 @@ function formatDataOra(date, hours = null) {
         (String(date.getHours()).padStart(2, '0') + ":" + 
          String(date.getMinutes()).padStart(2, '0'));
     return `${gg}/${mm}/${aaaa} ${orario}`;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Controllo giorno festivo e gestione UI
+// ─────────────────────────────────────────────────────────────────────────────
+
+
+// Esegui controllo al cambio data
+document.addEventListener('DOMContentLoaded', () => {
+    const dataInput = document.getElementById('data-lavoro');
+    if (dataInput) {
+        dataInput.addEventListener('change', controllaGiornoFestivo);
+        
+        // Controlla anche all'inizio se c'è già una data
+        setTimeout(() => controllaGiornoFestivo(), 100);
+    }
+});
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Controllo festività nazionali italiane (fisse)
+// ─────────────────────────────────────────────────────────────────────────────
+function isFestivoNazionale(data) {
+    const giorno = data.getDate();
+    const mese = data.getMonth() + 1; // 0-11 → 1-12
+    
+    // Festività fisse italiane
+    const festivitaFisse = [
+        '01-01', // Capodanno
+        '01-06', // Epifania
+        '04-25', // Liberazione
+        '05-01', // Festa del Lavoro
+        '06-02', // Festa della Repubblica
+        '08-15', // Ferragosto
+        '11-01', // Ognissanti
+        '12-08', // Immacolata
+        '12-25', // Natale
+        '12-26'  // Santo Stefano
+    ];
+    
+    // Formatta mese-giorno come stringa (es: "01-01")
+    const dataStr = `${mese.toString().padStart(2, '0')}-${giorno.toString().padStart(2, '0')}`;
+    
+    return festivitaFisse.includes(dataStr);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Controllo Pasqua (mobile) - Formula di Gauss
+// ─────────────────────────────────────────────────────────────────────────────
+function getPasqua(anno) {
+    const a = anno % 19;
+    const b = Math.floor(anno / 100);
+    const c = anno % 100;
+    const d = Math.floor(b / 4);
+    const e = b % 4;
+    const f = Math.floor((b + 8) / 25);
+    const g = Math.floor((b - f + 1) / 3);
+    const h = (19 * a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4);
+    const k = c % 4;
+    const l = (32 + 2 * e + 2 * i - h - k) % 7;
+    const m = Math.floor((a + 11 * h + 22 * l) / 451);
+    
+    const mesePasqua = Math.floor((h + l - 7 * m + 114) / 31); // 3 o 4
+    const giornoPasqua = ((h + l - 7 * m + 114) % 31) + 1;
+    
+    return new Date(anno, mesePasqua - 1, giornoPasqua);
+}
+
+function isFestivoMobile(data) {
+    const anno = data.getFullYear();
+    const pasqua = getPasqua(anno);
+    
+    // Date relative a Pasqua
+    const lunediAngelo = new Date(pasqua);
+    lunediAngelo.setDate(pasqua.getDate() + 1);
+    
+    // Festività mobili italiane
+    const festivitaMobili = [
+        pasqua,                 // Pasqua
+        lunediAngelo            // Lunedì dell'Angelo (Pasquetta)
+    ];
+    
+    // Controlla se la data corrisponde a una festività mobile
+    return festivitaMobili.some(festivo => 
+        festivo.getDate() === data.getDate() &&
+        festivo.getMonth() === data.getMonth() &&
+        festivo.getFullYear() === data.getFullYear()
+    );
 }
