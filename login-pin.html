@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inserisci PIN - ParkApp</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        .pin-container {
+            max-width: 400px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .pin-display {
+            font-size: 2rem;
+            letter-spacing: 10px;
+            margin: 2rem 0;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 10px;
+            min-height: 60px;
+        }
+        
+        .pin-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 2rem;
+        }
+        
+        .pin-btn {
+            padding: 20px;
+            font-size: 1.5rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .pin-btn:active {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .clear-btn {
+            grid-column: span 3;
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+        }
+
+        .back-btn {
+            margin-top: 1rem;
+            background: transparent;
+            color: #666;
+            border: none;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body class="bg-app">
+    <div class="app-container">
+        <header class="app-header">
+            <h1>Verifica Identità</h1>
+            <p id="tecnico-nome"></p>
+        </header>
+        
+        <main>
+            <div class="pin-container">
+                <p>Inserisci il tuo PIN di 4 cifre</p>
+                <div class="pin-display" id="pin-display">____</div>
+                
+                <div class="pin-grid">
+                    <button class="pin-btn" data-digit="1">1</button>
+                    <button class="pin-btn" data-digit="2">2</button>
+                    <button class="pin-btn" data-digit="3">3</button>
+                    <button class="pin-btn" data-digit="4">4</button>
+                    <button class="pin-btn" data-digit="5">5</button>
+                    <button class="pin-btn" data-digit="6">6</button>
+                    <button class="pin-btn" data-digit="7">7</button>
+                    <button class="pin-btn" data-digit="8">8</button>
+                    <button class="pin-btn" data-digit="9">9</button>
+                    <button class="pin-btn" data-digit="0">0</button>
+                    <button class="pin-btn clear-btn" id="clear-pin">Cancella</button>
+                </div>
+                
+                <div style="margin-top: 2rem;">
+                    <button id="btn-login" class="btn-primary" style="width: 100%; padding: 15px; font-size: 1.1rem;">
+                        Accedi
+                    </button>
+                    <button class="back-btn" id="btn-back">← Torna alla selezione</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // 1. Recupera il tecnico selezionato
+        const tecnicoSelezionato = sessionStorage.getItem('tecnico_selezionato');
+        
+        // Se non c'è tecnico selezionato, torna indietro
+        if (!tecnicoSelezionato) {
+            window.location.href = 'index.html';
+            document.getElementById('tecnico-nome').textContent = 'Nessun tecnico selezionato';
+        } else {
+            document.getElementById('tecnico-nome').textContent = tecnicoSelezionato;
+        }
+        
+        // 2. Setup variabili PIN
+        let pinInput = '';
+        const pinDisplay = document.getElementById('pin-display');
+        
+        // 3. Gestione input PIN
+        document.querySelectorAll('.pin-btn[data-digit]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (pinInput.length < 4) {
+                    pinInput += btn.getAttribute('data-digit');
+                    updatePinDisplay();
+                }
+            });
+        });
+        
+        document.getElementById('clear-pin').addEventListener('click', () => {
+            pinInput = '';
+            updatePinDisplay();
+        });
+
+        document.getElementById('btn-back').addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
+        
+        function updatePinDisplay() {
+            const display = pinInput.padEnd(4, '_');
+            pinDisplay.textContent = display.split('').join(' ');
+        }
+        
+        // 4. Login con Supabase
+        document.getElementById('btn-login').addEventListener('click', async () => {
+            if (!tecnicoSelezionato) {
+                alert('Seleziona prima un tecnico');
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            if (pinInput.length !== 4) {
+                alert('Inserisci un PIN di 4 cifre');
+                return;
+            }
+            
+            // Mostra loading
+            const loginBtn = document.getElementById('btn-login');
+            const originalText = loginBtn.textContent;
+            loginBtn.textContent = 'Verifica...';
+            loginBtn.disabled = true;
+            
+            try {
+                // **IMPORTANTE**: Sostituisci con il tuo URL di Supabase
+                // Lo trovi in: Supabase Dashboard → Settings → API → Project URL
+                const SUPABASE_FUNCTION_URL = 'https://berlfufnmolyrmxeyqfd.supabase.co/functions/v1/bright-function';
+                
+                const response = await fetch(SUPABASE_FUNCTION_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        tecnico_nome: tecnicoSelezionato,
+                        pin: pinInput
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Login riuscito
+                    localStorage.setItem('tecnico_loggato', data.nome || tecnicoSelezionato);
+                    localStorage.setItem('tecnico_id', data.tecnico_id);
+                    localStorage.setItem('ruolo', data.ruolo || 'tecnico');
+                    
+                    // Pulisci session storage
+                    sessionStorage.removeItem('tecnico_selezionato');
+                    
+                    // Redirect al menu
+                    window.location.href = 'menu.html';
+                } else {
+                    alert(data.message || 'PIN errato');
+                    pinInput = '';
+                    updatePinDisplay();
+                }
+                
+            } catch (error) {
+                console.error('Errore login:', error);
+                
+                // **FALLBACK: Se la Edge Function non è ancora configurata**
+                // Rimuovi questo blocco dopo aver configurato Supabase
+                if (error.message.includes('Failed to fetch')) {
+                    const conferma = confirm(
+                        'Edge Function non configurata. Vuoi procedere con login demo?\n\n' +
+                        'Configura prima Supabase:\n' +
+                        '1. Crea tabella "tecnici"\n' +
+                        '2. Crea Edge Function "verify-login"\n' +
+                        '3. Aggiorna l\'URL nella variabile SUPABASE_FUNCTION_URL'
+                    );
+                    
+                    if (conferma) {
+                        // Login demo (DA RIMUOVERE)
+                        localStorage.setItem('tecnico_loggato', tecnicoSelezionato);
+                        localStorage.setItem('tecnico_id', 'demo_' + Date.now());
+                        localStorage.setItem('ruolo', 'tecnico');
+                        sessionStorage.removeItem('tecnico_selezionato');
+                        window.location.href = 'menu.html';
+                    }
+                } else {
+                    alert('Errore di connessione al server');
+                }
+            } finally {
+                // Ripristina bottone
+                loginBtn.textContent = originalText;
+                loginBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

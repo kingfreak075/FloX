@@ -1,42 +1,221 @@
-
 const SUPABASE_URL = 'https://berlfufnmolyrmxeyqfd.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_a3USDfV7gbuauU2Kd6DuQQ_8PFVElpy';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const tecnicoLoggato = localStorage.getItem('tecnico_loggato');
+// Mappa periodicità -> etichette
+const PERIODICITA_MAP = {
+    30: "MENSILE",
+    60: "BIMESTRALE", 
+    90: "TRIMESTRALE",
+    180: "SEMESTRALE",
+    360: "ANNUALE"
+};
+
+// VARIABILI STATISTICHE (DICHIARATE A LIVELLO GLOBALE)
+let statistiche = {
+    globale: { totaleImpianti: 0, senzaMeseSem: 0 },
+    manutentore: { totaleImpianti: 0, senzaMeseSem: 0 }
+};
+
+// Cache per i giri dei manutentori (per evitare query multiple)
+let manutentoriCache = {};
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Imposta mese corrente (da 1 a 12)
     const meseCorrente = new Date().getMonth() + 1;
     const selMese = document.getElementById('select-mese');
     if (selMese) selMese.value = meseCorrente;
 
+    // Carica statistiche globali
+    await caricaStatisticheGenerali();
+    
+    // Carica manutentori e poi manutenzioni
     await caricaManutentori();
     caricaManutenzioni();
 });
 
-async function caricaManutentori() {
-    const select = document.getElementById('select-tecnico');
+// Carica statistiche globali: totale impianti e senza mese_sem
+async function caricaStatisticheGenerali() {
     try {
-        const { data, error } = await supabaseClient
+        console.log("Caricamento statistiche globali...");
+        
+        // PRIMA PROVA: con count esatto
+        const { data, error, count } = await supabaseClient
             .from('Parco_app')
-            .select('tecnico');
+            .select('impianto, mese_sem', { 
+                count: 'exact',
+                head: false 
+            });
 
         if (error) throw error;
 
-        const tecniciUnici = [...new Set(data.map(item => item.tecnico))].filter(Boolean).sort();
+        console.log("Count da Supabase:", count);
+        console.log("Data length:", data.length);
+
+        // Usa 'count' se disponibile, altrimenti data.length
+        const totale = count !== null ? count : data.length;
         
-        select.innerHTML = ""; 
-        tecniciUnici.forEach(t => {
-            const opt = document.createElement('option');
-            opt.value = t;
-            opt.innerText = t;
-            if (t === tecnicoLoggato) opt.selected = true;
-            select.appendChild(opt);
-        });
+        statistiche.globale.totaleImpianti = totale;
+        
+        // ... resto del calcolo ...
+        
+        console.log("Statistiche globali calcolate:", statistiche.globale);
+        
+        const reportGlobale = document.getElementById('report-globale');
+        if (reportGlobale) {
+            reportGlobale.textContent = `(G: ${statistiche.globale.totaleImpianti} | ${statistiche.globale.senzaMeseSem})`;
+        }
+
     } catch (err) {
-        console.error("Errore tecnici:", err);
+        console.error("Errore statistiche globali:", err);
     }
 }
+
+
+
+// Carica manutentori dalla tabella manutentori
+async function caricaManutentori() {
+    const select = document.getElementById('select-manutentore'); // <-- QUI CAMBIA!
+    if (!select) {
+        console.error("Elemento select-manutentore non trovato!");
+        return;
+    }
+    
+    try {
+        // Carica dalla tabella manutentori
+        const { data, error } = await supabaseClient
+            .from('manutentori')
+            .select('"Manutentore", "Giro"');  // Note: virgolette per CASE misto
+
+        if (error) throw error;
+
+        // Salva in cache per non dover rifare query
+        data.forEach(m => {
+            manutentoriCache[m.Manutentore] = m.Giro;
+        });
+
+        // Ordina alfabeticamente
+        const manutentoriUnici = data
+            .map(item => item.Manutentore)
+            .filter(Boolean)
+            .sort();
+
+        select.innerHTML = ""; 
+        
+        // Aggiungi opzione vuota
+        const optVuota = document.createElement('option');
+        optVuota.value = "";
+        optVuota.innerText = "Seleziona manutentore";
+        select.appendChild(optVuota);
+        
+        manutentoriUnici.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m;
+            opt.innerText = m;
+            select.appendChild(opt);
+        });
+
+        // Se c'è un manutentore in localStorage, selezionalo
+        const manutentoreSalvato = localStorage.getItem('manutentore_loggato');
+        if (manutentoreSalvato && manutentoriUnici.includes(manutentoreSalvato)) {
+            select.value = manutentoreSalvato;
+        }
+
+    } catch (err) {
+        console.error("Errore caricamento manutentori:", err);
+        select.innerHTML = "<option value=''>Errore caricamento</option>";
+    }
+}
+// Ottieni il giro di un manutentore (dalla cache o query)
+async function getGiroManutentore(manutentore) {
+    if (!manutentore) return null;
+    
+    // Se abbiamo in cache, ritorna
+    if (manutentoriCache[manutentore] !== undefined) {
+        return manutentoriCache[manutentore];
+    }
+    
+    // Altrimenti query
+    try {
+        const { data, error } = await supabaseClient
+            .from('manutentori')
+            .select('"Giro"')
+            .eq('Manutentore', manutentore)
+            .single();
+
+        if (error) throw error;
+        
+        // Salva in cache
+        manutentoriCache[manutentore] = data.Giro;
+        return data.Giro;
+        
+    } catch (err) {
+        console.error("Errore ottenimento giro:", err);
+        return null;
+    }
+}
+
+async function caricaStatisticheManutentore(manutentore) {
+    if (!manutentore) {
+        // Reset statistiche manutentore
+        statistiche.manutentore = { totaleImpianti: 0, senzaMeseSem: 0 };
+        aggiornaReportManutentore();
+        return;
+    }
+    
+    try {
+        // 1. Ottieni il giro del manutentore
+        const giroManutentore = await getGiroManutentore(manutentore);
+        if (!giroManutentore) {
+            console.error("Giro non trovato per manutentore:", manutentore);
+            statistiche.manutentore = { totaleImpianti: 0, senzaMeseSem: 0 };
+            aggiornaReportManutentore();
+            return;
+        }
+        
+        // 2. Carica tutti gli impianti di quel giro
+        const { data, error } = await supabaseClient
+            .from('Parco_app')
+            .select('impianto, mese_sem')
+            .eq('giro', giroManutentore.toString());
+
+        if (error) throw error;
+
+        // 3. Calcola statistiche per il manutentore
+        statistiche.manutentore.totaleImpianti = data.length;
+        
+        statistiche.manutentore.senzaMeseSem = data.filter(imp => {
+            const m = imp.mese_sem;
+            
+            if (m === null || m === undefined || m === '') return true;
+            if (m === '0' || m === 0) return true;
+            
+            const num = parseInt(m);
+            return isNaN(num) || num < 1 || num > 12;
+        }).length;
+
+        console.log(`Statistiche manutentore ${manutentore} (giro ${giroManutentore}):`, statistiche.manutentore);
+        
+        // 4. Aggiorna report
+        aggiornaReportManutentore();
+
+    } catch (err) {
+        console.error("Errore statistiche manutentore:", err);
+        statistiche.manutentore = { totaleImpianti: 0, senzaMeseSem: 0 };
+        aggiornaReportManutentore();
+    }
+}
+
+function aggiornaReportManutentore() {
+    const reportManutentore = document.getElementById('report-manutentore');
+    if (reportManutentore) {
+        reportManutentore.textContent = `(M: ${statistiche.manutentore.totaleImpianti} | ${statistiche.manutentore.senzaMeseSem})`;
+    }
+}
+
+
+
+
 
 
 function creaFooter(statistiche) {
@@ -62,21 +241,42 @@ function creaFooter(statistiche) {
     `;
 }
 
-async function caricaAnnotazioniPerImpianto(tecnicoScelto) {
+// Funzione helper per verificare se un impianto è dovuto nel mese selezionato
+function deveEssereFattaNelMese(meseBase, periodicita, meseSelezionato) {
+    // Se periodicita non è valida o meseBase non è valido, non è nel mese
+    if (!meseBase || meseBase < 1 || meseBase > 12) {
+        return false;
+    }
+
+    // Se periodicita non è standard, mostra solo nel mese base
+    if (![30, 60, 90, 180, 360].includes(parseInt(periodicita))) {
+        return parseInt(meseBase) === meseSelezionato;
+    }
+
+    // Calcola periodicità in mesi
+    const periodMonths = parseInt(periodicita) / 30;
+    
+    // Calcola differenza tra mese selezionato e mese base (considerando ciclo annuale)
+    let diff = (meseSelezionato - meseBase) % 12;
+    if (diff < 0) diff += 12;
+    
+    // Verifica se la differenza è multiplo della periodicità in mesi
+    return diff % periodMonths === 0;
+}
+
+async function caricaAnnotazioniPerImpianto() {
     try {
-        console.log("Cerco TUTTE le annotazioni (senza filtro tecnico)");
+        console.log("Cerco TUTTE le annotazioni (senza filtro)");
         
         const { data, error } = await supabaseClient
             .from('annotazioni')
             .select('impianto_ann, tipo');
-            // RIMOSSO: .eq('tecnico_ann', tecnicoScelto)
 
         if (error) {
             console.error("Errore Supabase:", error);
             throw error;
         }
 
-        console.log("Dati annotazioni ricevuti:", data);
         console.log("Numero annotazioni trovate:", data.length);
         
         // Crea mappa: impianto -> array di tipi presenti
@@ -84,9 +284,7 @@ async function caricaAnnotazioniPerImpianto(tecnicoScelto) {
         data.forEach(ann => {
             const codiceImpianto = ann.impianto_ann ? ann.impianto_ann.trim().toUpperCase() : '';
             
-            if (!codiceImpianto) return; // Salta se vuoto
-            
-            console.log("Annotazione letta - originale:", ann.impianto_ann, "-> normalizzato:", codiceImpianto, "tipo:", ann.tipo);
+            if (!codiceImpianto) return;
             
             if (!mappaTipi[codiceImpianto]) {
                 mappaTipi[codiceImpianto] = [];
@@ -95,9 +293,6 @@ async function caricaAnnotazioniPerImpianto(tecnicoScelto) {
                 mappaTipi[codiceImpianto].push(ann.tipo);
             }
         });
-        
-        console.log("Mappa finale creata:", mappaTipi);
-        console.log("Chiavi nella mappa:", Object.keys(mappaTipi));
         
         return mappaTipi;
     } catch (err) {
@@ -108,74 +303,122 @@ async function caricaAnnotazioniPerImpianto(tecnicoScelto) {
 
 async function caricaManutenzioni() {
     const meseSelezionato = parseInt(document.getElementById('select-mese').value);
-    const tecnicoScelto = document.getElementById('select-tecnico').value;
+    const manutentoreScelto = document.getElementById('select-manutentore').value;
     const lista = document.getElementById('lista-manutenzioni');
     
     lista.innerHTML = "<div style='text-align:center; padding:20px;'>Caricamento...</div>";
 
+    // 1. Aggiorna statistiche del manutentore
+    await caricaStatisticheManutentore(manutentoreScelto);
+    
+    // 2. Se non è selezionato un manutentore, mostra messaggio
+    if (!manutentoreScelto) {
+        lista.innerHTML = "<div style='text-align:center; margin-top:40px; color:#64748b;'>Seleziona un manutentore</div>";
+        return;
+    }
+
     try {
-        // Query alla tabella corretta
+        // 1. Ottieni il giro del manutentore selezionato
+        const giroManutentore = await getGiroManutentore(manutentoreScelto);
+        
+        if (!giroManutentore) {
+            lista.innerHTML = "<div style='text-align:center; margin-top:40px; color:#ef4444;'>Errore: giro non trovato per questo manutentore</div>";
+            return;
+        }
+
+        console.log(`Manutentore: ${manutentoreScelto}, Giro: ${giroManutentore}, Mese: ${meseSelezionato}`);
+
+        // 2. Query alla tabella Parco_app filtrata per giro
         const { data: impianti, error } = await supabaseClient
             .from('Parco_app')
             .select('*')
-            .eq('tecnico', tecnicoScelto);
+            .eq('giro', giroManutentore.toString()); // Converti a stringa per sicurezza
 
         if (error) throw error;
 
+        console.log(`Impianti trovati per giro ${giroManutentore}:`, impianti.length);
 
-        // 2. CARICA ANNOTAZIONI IN PARALLELO
-        const mappaTipi = await caricaAnnotazioniPerImpianto(tecnicoScelto);
+        // 3. Carica annotazioni in parallelo
+        const mappaTipi = await caricaAnnotazioniPerImpianto();
 
-console.log("Mappa tipi caricata:", mappaTipi);
-        // Filtro semestrale
-        const filtrati = impianti.filter(imp => {
-            const m = parseInt(imp.mese_sem);
-            if (isNaN(m)) return false;
-            const opposto = m > 6 ? m - 6 : m + 6;
-            return (m === meseSelezionato || opposto === meseSelezionato);
-        });
+        // 4. FILTRO PER MESE SELEZIONATO
+        let filtrati = [];
+        
+        if (meseSelezionato === 0) {
+            // Mese 0 = NON ASSEGNATO: mostra tutti gli impianti senza mese_sem valido
+            filtrati = impianti.filter(imp => {
+                const m = parseInt(imp.mese_sem);
+                return isNaN(m) || m < 1 || m > 12 || m === 0;
+            });
+        } else {
+            // Mese 1-12: filtra in base alla periodicità
+            filtrati = impianti.filter(imp => {
+                const meseBase = parseInt(imp.mese_sem);
+                const periodicita = parseInt(imp.periodicit);
+                
+                return deveEssereFattaNelMese(meseBase, periodicita, meseSelezionato);
+            });
+        }
 
         if (filtrati.length === 0) {
             lista.innerHTML = "<div style='text-align:center; margin-top:40px; color:#64748b;'>Nessun impianto per questo mese.</div>";
             return;
         }
 
-        // Variabili per statistiche
+        // 5. ORDINAMENTO: per periodicità (crescente) e poi per indirizzo
+        filtrati.sort((a, b) => {
+            // Prima per periodicità
+            const periodA = parseInt(a.periodicit) || 999;
+            const periodB = parseInt(b.periodicit) || 999;
+            
+            if (periodA !== periodB) {
+                return periodA - periodB;
+            }
+            
+            // Poi per indirizzo alfabetico
+            const indirizzoA = a.Indirizzo || '';
+            const indirizzoB = b.Indirizzo || '';
+            return indirizzoA.localeCompare(indirizzoB);
+        });
+
+        // 6. Variabili per statistiche
         let statistiche = {
             totali: filtrati.length,
-            nelMese: 0,       // manutenzione fatta nel mese visualizzato (VERDE)
-            inRitardo: 0,     // oltre 6 mesi (ROSSO)
-            regolari: 0       // entro 6 mesi ma non nel mese (NERO)
+            nelMese: 0,
+            inRitardo: 0,
+            regolari: 0
         };
 
         lista.innerHTML = "";
+        
+        // 7. CREAZIONE CARD (LOGICA INVARIATA)
         filtrati.forEach(imp => {
+            // --- FILIGRANA PERIODICITA ---
+            const periodicitaNum = parseInt(imp.periodicit);
+            let filigranaPeriodo = "";
+            let coloreFiligrana = "#e2e8f0";
+            
+            if ([30, 60, 90, 180, 360].includes(periodicitaNum)) {
+                filigranaPeriodo = PERIODICITA_MAP[periodicitaNum];
+            } else {
+                filigranaPeriodo = "VERIFICA FREQUENZA";
+                coloreFiligrana = "#ef4444";
+            }
 
-// --- DEBUG ---
-    console.log("Impianto da Parco_app:", imp.impianto, "tipo:", typeof imp.impianto);
-    console.log("Impianto lunghezza:", imp.impianto.length);
-    console.log("Impianto con trim:", imp.impianto.trim());
+            // Controlla tipi annotazioni
+            const tipiAnnotazioni = mappaTipi[imp.impianto] || [];
+            const hasTipo1 = tipiAnnotazioni.includes("1");
+            const hasTipo2 = tipiAnnotazioni.includes("2");
 
+            // Genera stringa icone
+            let iconeAnnotazioni = "";
+            if (hasTipo1) iconeAnnotazioni += '<span style="display:inline-block; width:12px; height:12px; background:#a855f7; border-radius:50%; margin-left:4px;" title="Tipo 1"></span>';
+            if (hasTipo2) iconeAnnotazioni += '<span style="display:inline-block; width:12px; height:12px; background:#f59e0b; border-radius:50%; margin-left:4px;" title="Tipo 2"></span>';
 
-            // --- LOGICA DATA E COLORE ---
-            let coloreData = "#475569"; // default grigio
-            let showGreenDot = false; // per il pallino verde
-            let linguettaVerde = false; // per la linguetta laterale verde
-
-// PRIMA DI const tipiAnnotazioni = mappaTipi[imp.impianto] || [];
-console.log("Cercando annotazioni per impianto:", imp.impianto);
-console.log("Trovato in mappa:", mappaTipi[imp.impianto]);
-// Controlla tipi annotazioni per questo impianto
-const tipiAnnotazioni = mappaTipi[imp.impianto] || [];
-const hasTipo1 = tipiAnnotazioni.includes("1");
-const hasTipo2 = tipiAnnotazioni.includes("2");
-
-// Genera stringa icone
-let iconeAnnotazioni = "";
-if (hasTipo1) iconeAnnotazioni += '<span style="display:inline-block; width:12px; height:12px; background:#a855f7; border-radius:50%; margin-left:4px;" title="Tipo 1"></span>';
-if (hasTipo2) iconeAnnotazioni += '<span style="display:inline-block; width:12px; height:12px; background:#f59e0b; border-radius:50%; margin-left:4px;" title="Tipo 2"></span>';
-
-
+            // --- LOGICA DATA E COLORE (INVARIATA) ---
+            let coloreData = "#475569";
+            let showGreenDot = false;
+            let linguettaVerde = false;
 
             if (imp.ult_sem) {
                 const parti = imp.ult_sem.includes('/') ? imp.ult_sem.split('/') : imp.ult_sem.split('-');
@@ -185,47 +428,42 @@ if (hasTipo2) iconeAnnotazioni += '<span style="display:inline-block; width:12px
                 const oggi = new Date();
                 const diffGiorni = (oggi - dataVisita) / (1000 * 60 * 60 * 24);
                 
-                // Mese dell'ultima manutenzione (1-12)
                 const meseUltManutenzione = dataVisita.getMonth() + 1;
-                const meseVisualizzato = meseSelezionato; // dal <select>
+                const meseVisualizzato = meseSelezionato;
                 const meseCorrente = new Date().getMonth() + 1;
 
-                // 1. VERIFICA LINGUETTA VERDE (bordo sinistro)
-                // Linguetta verde solo se: 
-                // - il mese visualizzato = mese ultima manutenzione
-                // - E siamo proprio in quel mese (mese corrente = mese visualizzato)
+                // Linguetta verde
                 if (meseUltManutenzione === meseVisualizzato && meseVisualizzato === meseCorrente) {
                     linguettaVerde = true;
                 }
 
-                // 2. LOGICA COLORE FONT E PALLINO VERDE - E INCREMENTA STATISTICHE
+                // Logica colore font e statistiche
                 if (meseUltManutenzione === meseVisualizzato) {
-                    // Se la manutenzione è stata fatta nel mese che sto guardando → VERDE
-                    coloreData = "#22c55e"; // verde
-                    showGreenDot = true; // mostra pallino verde
+                    coloreData = "#22c55e";
+                    showGreenDot = true;
                     statistiche.nelMese++;
                 } else if (diffGiorni <= 180) {
-                    // Entro 6 mesi ma non nel mese visualizzato → NERO
-                    coloreData = "#000000"; // nero
+                    coloreData = "#000000";
                     showGreenDot = false;
                     statistiche.regolari++;
                 } else {
-                    // Oltre 6 mesi → ROSSO
-                    coloreData = "#ef4444"; // rosso
+                    coloreData = "#ef4444";
                     showGreenDot = false;
                     statistiche.inRitardo++;
                 }
             } else {
-                // Se non c'è data → considera come in ritardo
-                coloreData = "#ef4444"; // rosso
+                coloreData = "#ef4444";
                 statistiche.inRitardo++;
             }
 
-            // --- FILIGRANA ---
+            // --- FILIGRANA SEMESTRALE ---
             const mP = parseInt(imp.mese_sem);
-            const mS = mP > 6 ? mP - 6 : mP + 6;
-            const nomiMesi = ["GEN", "FEB", "MAR", "APR", "MAG", "GIU", "LUG", "AGO", "SET", "OTT", "NOV", "DIC"];
-            const testoFiligrana = `${nomiMesi[mP-1]} - ${nomiMesi[mS-1]}`;
+            let testoFiligrana = "";
+            if (mP >= 1 && mP <= 12) {
+                const mS = mP > 6 ? mP - 6 : mP + 6;
+                const nomiMesi = ["GEN", "FEB", "MAR", "APR", "MAG", "GIU", "LUG", "AGO", "SET", "OTT", "NOV", "DIC"];
+                testoFiligrana = `${nomiMesi[mP-1]} - ${nomiMesi[mS-1]}`;
+            }
 
             const card = document.createElement('div');
 
@@ -239,18 +477,21 @@ if (hasTipo2) iconeAnnotazioni += '<span style="display:inline-block; width:12px
             `;
 
             card.innerHTML = `
-    <div style="position: absolute; bottom: -5px; right: 30px; font-size: 1.8rem; font-weight: 900; color: #e2e8f0; z-index: 0; pointer-events: none; opacity: 0.8; letter-spacing: -1px;">
-        ${testoFiligrana}
-    </div>
-    <div style="display: flex; justify-content: space-between; align-items: center; z-index: 1;">
-        <div style="flex:1; padding-right: 10px;">
-            <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 4px;">
-                <div style="font-weight:800; color:#1e293b; font-size: 1rem;">${imp.impianto}</div>
-                ${iconeAnnotazioni}
-            </div>
-            <div style="font-size:0.8rem; color:#64748b; margin-top: 2px;">
-                ${imp.Indirizzo}${imp.localit ? ' - ' + imp.localit : ''}
-            </div>
+                <div style="position: absolute; bottom: -5px; right: 30px; font-size: 1.8rem; font-weight: 900; color: #e2e8f0; z-index: 0; pointer-events: none; opacity: 0.8; letter-spacing: -1px;">
+                    ${testoFiligrana}
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; z-index: 1;">
+                    <div style="flex:1; padding-right: 10px;">
+                        <div style="font-size: 0.7rem; color: ${coloreFiligrana}; font-weight: 600; margin-bottom: 2px;">
+                            ${filigranaPeriodo}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 4px;">
+                            <div style="font-weight:800; color:#1e293b; font-size: 1rem;">${imp.impianto}</div>
+                            ${iconeAnnotazioni}
+                        </div>
+                        <div style="font-size:0.8rem; color:#64748b; margin-top: 2px;">
+                            ${imp.Indirizzo}${imp.localit ? ' - ' + imp.localit : ''}
+                        </div>
                         <div style="display: flex; align-items: center; gap: 5px; margin-top: 10px; color: ${coloreData};">
                             <span class="material-symbols-rounded" style="font-size: 16px;">calendar_today</span>
                             ${showGreenDot ? '<span style="display:inline-block; width:8px; height:8px; background:#22c55e; border-radius:50%; margin-right:3px;"></span>' : ''}
@@ -275,12 +516,13 @@ if (hasTipo2) iconeAnnotazioni += '<span style="display:inline-block; width:12px
             lista.appendChild(card);
         });
 
-        // AGGIUNGI FOOTER CON STATISTICHE
+        // 8. AGGIUNGI FOOTER CON STATISTICHE
         const footer = document.createElement('div');
         footer.innerHTML = creaFooter(statistiche);
         lista.appendChild(footer);
 
     } catch (err) {
+        console.error("Errore:", err);
         lista.innerHTML = `<div style='color:red; text-align:center;'>Errore: ${err.message}</div>`;
     }
 }
@@ -290,7 +532,6 @@ function vaiAEsegui(codice, indirizzo) {
     window.location.href = `nuovo_lavoro.html?id=${codice}`;
 }
 
-// Aggiungi la funzione:
 function apriAnnotazioni(codiceImpianto) {
     window.location.href = `annotazioni.html?impianto=${codiceImpianto}`;
 }
