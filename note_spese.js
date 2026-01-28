@@ -1,7 +1,46 @@
-// note_spese.js - VERSIONE DEFINITIVA (SOLO SOMMA, NO MOLTIPLICAZIONI)
-const SUPABASE_URL = 'https://berlfufnmolyrmxeyqfd.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_a3USDfV7gbuauU2Kd6DuQQ_8PFVElpy';
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// ✅ SOSTITUIRE CON QUESTO:
+// 1. Controllo configurazione
+if (!hasDbConfig()) {
+    showDbConfigOverlay();
+    throw new Error('Configurazione database mancante');
+}
+
+// 2. Ottenere client
+let supabaseClient;
+try {
+    supabaseClient = getSupabaseClient();
+} catch (error) {
+    console.error('Errore creazione client:', error);
+    mostraErroreDB(error.message);
+}
+
+// 3. Funzione errore DB
+function mostraErroreDB(messaggio) {
+    console.error('Errore DB:', messaggio);
+    
+    // Mostra messaggio nella pagina
+    const listaDiv = document.getElementById('lista-manutenzioni');
+    if (listaDiv) {
+        listaDiv.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px; color: #ef4444;">
+                <span class="material-symbols-rounded" style="font-size: 3rem; margin-bottom: 20px;">error</span>
+                <h3 style="margin-bottom: 10px;">Errore Database</h3>
+                <p>${messaggio}</p>
+                <button onclick="window.location.href='config.html'" 
+                        style="margin-top: 20px; padding: 10px 20px; background: #ef4444; color: white; border: none; border-radius: 8px; font-weight: 600;">
+                    Configura Database
+                </button>
+            </div>
+        `;
+    }
+    
+    // Disabilita filtro periodicità se presente
+    const filtroDiv = document.querySelector('.filtro-btn');
+    if (filtroDiv) {
+        filtroDiv.style.opacity = '0.5';
+        filtroDiv.style.pointerEvents = 'none';
+    }
+}
 
 let fotoRicevute = {
     vitto: [],

@@ -7,7 +7,11 @@
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- CON QUESTO: -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- ✅ AGGIUNTO: File di configurazione DB centrale -->
+<script src="db-config.js"></script>
+<script src="check-db-config.js"></script>
     <style>
         :root { --primary: #2563eb; --primary-light: #eff6ff; --bg-app: #f1f5f9; }
         body { background-color: var(--bg-app); font-family: 'Inter', sans-serif; margin: 0; padding-bottom: 140px; }
@@ -115,6 +119,61 @@
         <button onclick="salvaGestione()" class="btn-modern active" style="width:100%; padding:18px; font-size:1rem;">INVIA ATTIVITÀ</button>
     </div>
 
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof getDbConfigInfo === 'function') {
+            const configInfo = getDbConfigInfo();
+            if (!configInfo.configured) {
+                console.warn('Database non configurato');
+                mostraIndicatoreDB(false);
+            } else {
+                console.log('DB configurato:', configInfo.urlShort);
+                mostraIndicatoreDB(true, configInfo);
+            }
+        }
+    });
+    
+    function mostraIndicatoreDB(isConfigured, configInfo = null) {
+        const header = document.querySelector('.header-gestione');
+        
+        if (!header) return;
+        
+        let indicator = document.getElementById('db-status-indicator');
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'db-status-indicator';
+            indicator.style.cssText = `
+                position: absolute;
+                top: 15px;
+                right: 15px;
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                border: 2px solid white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                cursor: pointer;
+                z-index: 10;
+            `;
+            header.style.position = 'relative';
+            header.appendChild(indicator);
+        }
+        
+        if (isConfigured && configInfo) {
+            indicator.style.background = '#22c55e';
+            indicator.title = `DB configurato • ${configInfo.urlShort}`;
+        } else {
+            indicator.style.background = '#f59e0b';
+            indicator.title = 'Database non configurato - Clicca per configurare';
+            indicator.onclick = function() {
+                if (confirm('Database non configurato. Vuoi configurare?')) {
+                    window.location.href = 'config.html';
+                }
+            };
+        }
+    }
+</script>
     <script src="gestione.js"></script>
 </body>
 </html>

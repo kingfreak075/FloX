@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ParkApp - Montaggi</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- CON QUESTO: -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- ✅ AGGIUNTO: File di configurazione DB centrale -->
+<script src="db-config.js"></script>
+<script src="check-db-config.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
 </head>
@@ -58,6 +62,65 @@
         </footer>
     </div>
 
+
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const configInfo = getDbConfigInfo();
+        
+        if (!configInfo.configured) {
+            console.warn('Database non configurato per ParkApp');
+            mostraIndicatoreDB(false);
+        } else {
+            console.log('DB configurato:', configInfo.urlShort);
+            mostraIndicatoreDB(true);
+        }
+    });
+    
+    function mostraIndicatoreDB(isConfigured) {
+        const header = document.querySelector('.app-header') || 
+                      document.querySelector('header') || 
+                      document.querySelector('div[style*="position: sticky"]');
+        
+        if (!header) return;
+        
+        // Crea o aggiorna indicatore
+        let indicator = document.getElementById('db-status-indicator');
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'db-status-indicator';
+            indicator.style.cssText = `
+                position: absolute;
+                top: 15px;
+                right: 15px;
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                border: 2px solid white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                cursor: pointer;
+                z-index: 10;
+            `;
+            indicator.onclick = function() {
+                if (confirm('Database non configurato. Vuoi andare alla configurazione?')) {
+                    window.location.href = 'config.html';
+                }
+            };
+            header.style.position = 'relative';
+            header.appendChild(indicator);
+        }
+        
+        if (isConfigured) {
+            indicator.style.background = '#22c55e'; // Verde
+            indicator.title = `DB configurato • ${configInfo.urlShort}`;
+            indicator.onclick = null;
+        } else {
+            indicator.style.background = '#f59e0b'; // Giallo/arancione
+            indicator.title = 'Database non configurato - Clicca per configurare';
+        }
+    }
+</script>
     <!-- SCRIPT -->
     <script src="montaggi.js"></script>
 

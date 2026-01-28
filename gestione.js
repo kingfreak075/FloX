@@ -1,6 +1,54 @@
-const SUPABASE_URL = 'https://berlfufnmolyrmxeyqfd.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_a3USDfV7gbuauU2Kd6DuQQ_8PFVElpy';
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// ✅ CONFIGURAZIONE CENTRALIZZATA SUPABASE - GESTIONE
+// ===================================================
+
+// 1. CONTROLLO CONFIGURAZIONE DB
+if (typeof hasDbConfig !== 'function' || !hasDbConfig()) {
+    if (typeof showDbConfigOverlay === 'function') {
+        showDbConfigOverlay();
+    }
+    throw new Error('Configurazione database mancante');
+}
+
+// 2. OTTIENI CLIENT SUPABASE
+let supabaseClient;
+try {
+    supabaseClient = getSupabaseClient();
+    console.log('✅ Client Supabase creato per gestione');
+} catch (error) {
+    console.error('❌ Errore creazione client:', error);
+    mostraErroreDB(`Errore DB: ${error.message}`);
+}
+
+// 3. FUNZIONE ERRORE DB PER GESTIONE
+function mostraErroreDB(messaggio) {
+    console.error('Errore DB:', messaggio);
+    
+    // Disabilita tutti i pulsanti e mostra messaggio
+    document.querySelectorAll('.btn-modern, button').forEach(btn => {
+        btn.style.opacity = '0.5';
+        btn.style.pointerEvents = 'none';
+    });
+    
+    // Mostra messaggio di errore nell'area configurazione
+    const areaConfig = document.getElementById('area-config');
+    if (areaConfig) {
+        areaConfig.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px; color: #ef4444;">
+                <span class="material-symbols-rounded" style="font-size: 3rem; margin-bottom: 20px;">error</span>
+                <h3 style="margin-bottom: 10px;">Errore Database</h3>
+                <p>${messaggio}</p>
+                <button onclick="window.location.href='config.html'" 
+                        style="margin-top: 20px; padding: 10px 20px; background: #ef4444; color: white; border: none; border-radius: 8px; font-weight: 600;">
+                    Configura Database
+                </button>
+            </div>
+        `;
+    }
+}
+
+// ===================================================
+// CODICE ORIGINALE DELLA GESTIONE
+// ===================================================
 
 const tecnicoLoggato = localStorage.getItem('tecnico_loggato');
 let tipoCorrente = ''; 
@@ -105,27 +153,29 @@ function setTipoIntervento(tipo, element) {
     aggiornaRiepilogo();
 }
 
-function updateSlider(val) { document.getElementById('valore-ore').innerText = val; aggiornaRiepilogo(); }
-function updateViaggio(val) { document.getElementById('valore-viaggio').innerText = val; aggiornaRiepilogo(); }
+function updateSlider(val) { 
+    document.getElementById('valore-ore').innerText = val; 
+    aggiornaRiepilogo(); 
+}
+
+function updateViaggio(val) { 
+    document.getElementById('valore-viaggio').innerText = val; 
+    aggiornaRiepilogo(); 
+}
 
 function handle8h(checked) {
     const s = document.getElementById('box-ore-secche');
-    const sliderInput = document.getElementById('slider-ore'); // Recuperiamo l'input
+    const sliderInput = document.getElementById('slider-ore');
     
     if(checked) { 
         s.style.opacity = "0.3"; 
         s.style.pointerEvents = "none"; 
-        
-        // --- AGGIUNTA: Forza il valore dello slider a 8 ---
         sliderInput.value = 8; 
-        
         updateSlider(8); 
     }
     else { 
         s.style.opacity = "1"; 
         s.style.pointerEvents = "auto"; 
-        
-        // Opzionale: riporta lo slider a 1 se tolgono la spunta
         sliderInput.value = 1; 
         updateSlider(1); 
     }
@@ -133,7 +183,8 @@ function handle8h(checked) {
 
 function aggiornaRiepilogo() {
     const r = document.getElementById('testo-riepilogo');
-    let ore = (tipoInterventoSelezionato === 'ORDINARIA' || tipoInterventoSelezionato === 'ALTRO') ? document.getElementById('slider-ore').value : "Orari";
+    let ore = (tipoInterventoSelezionato === 'ORDINARIA' || tipoInterventoSelezionato === 'ALTRO') ? 
+        document.getElementById('slider-ore').value : "Orari";
     r.innerText = `${codiceSelezionato} | ${tipoInterventoSelezionato} | Ore: ${ore} | Viaggio: ${document.getElementById('slider-viaggio').value}h`;
 }
 
@@ -149,7 +200,7 @@ async function salvaGestione() {
         oraInizio = document.getElementById('ora-inizio').value;
         oraFine = document.getElementById('ora-fine').value;
         if(!oraInizio || !oraFine) return alert("Mancano orari!");
-        // Calcolo differenza semplice
+        
         let [h1, m1] = oraInizio.split(':').map(Number);
         let [h2, m2] = oraFine.split(':').map(Number);
         let d = (h2*60+m2) - (h1*60+m1);
@@ -179,5 +230,8 @@ async function salvaGestione() {
 
     const { error } = await supabaseClient.from('fogliolavoro').insert([payload]);
     if (error) alert("Errore DB: " + error.message);
-    else { alert("Inviato!"); window.location.href = 'menu.html'; }
+    else { 
+        alert("Attività salvata con successo!"); 
+        window.location.href = 'menu.html'; 
+    }
 }

@@ -1,6 +1,49 @@
-const SUPABASE_URL = 'https://berlfufnmolyrmxeyqfd.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_a3USDfV7gbuauU2Kd6DuQQ_8PFVElpy';
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// ✅ SOSTITUIRE L'INIZIO DEL FILE (righe 1-30) CON QUESTO:
+
+// 1. Controllo configurazione
+if (typeof hasDbConfig !== 'function' || !hasDbConfig()) {
+    if (typeof showDbConfigOverlay === 'function') {
+        showDbConfigOverlay();
+    }
+    throw new Error('Configurazione database mancante');
+}
+
+// 2. Ottenere client
+let supabaseClient;
+try {
+    supabaseClient = getSupabaseClient();
+    console.log('✅ Client Supabase creato per manutenzioni');
+} catch (error) {
+    console.error('❌ Errore client:', error);
+    mostraErroreDB(`Errore DB: ${error.message}`);
+}
+
+// 3. Funzione errore DB (MANTIENI quella esistente, è OK)
+function mostraErroreDB(messaggio) {
+    console.error('Errore DB:', messaggio);
+    
+    // Mostra messaggio nella pagina
+    const listaDiv = document.getElementById('lista-manutenzioni');
+    if (listaDiv) {
+        listaDiv.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px; color: #ef4444;">
+                <span class="material-symbols-rounded" style="font-size: 3rem; margin-bottom: 20px;">error</span>
+                <h3 style="margin-bottom: 10px;">Errore Database</h3>
+                <p>${messaggio}</p>
+                <button onclick="window.location.href='config.html'" 
+                        style="margin-top: 20px; padding: 10px 20px; background: #ef4444; color: white; border: none; border-radius: 8px; font-weight: 600;">
+                    Configura Database
+                </button>
+            </div>
+        `;
+    }
+    // Disabilita filtro periodicità se presente
+    const filtroDiv = document.querySelector('.filtro-btn');
+    if (filtroDiv) {
+        filtroDiv.style.opacity = '0.5';
+        filtroDiv.style.pointerEvents = 'none';
+    }
+}
 
 // Mappa periodicità -> etichette
 const PERIODICITA_MAP = {
