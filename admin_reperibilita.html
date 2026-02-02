@@ -241,6 +241,46 @@
     font-size: 18px;
     vertical-align: middle;
 }
+
+
+/* Stili per storico approvazioni */
+.storico-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--border);
+    border-left: 4px solid #3B82F6;
+}
+
+.storico-card.approved {
+    border-left-color: #22c55e;
+    background: linear-gradient(to right, #f0fdf4 0.5%, white 2%);
+}
+
+.storico-card.rejected {
+    border-left-color: #ef4444;
+    background: linear-gradient(to right, #fef2f2 0.5%, white 2%);
+}
+
+.stato-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    margin-left: 0.5rem;
+}
+
+.stato-badge.approved {
+    background: #22c55e;
+    color: white;
+}
+
+.stato-badge.rejected {
+    background: #ef4444;
+    color: white;
+}
     </style>
 </head>
 <body class="bg-app">
@@ -614,21 +654,27 @@
             Storico Approvazioni
         </h2>
         
-        <div class="input-group">
-            <label class="input-label">Filtri avanzati</label>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                <select id="filtro-anno-storico" class="input-field">
-                    <option value="2025">2025</option>
-                    <option value="2026" selected>2026</option>
-                </select>
-                <select id="filtro-tipo-storico" class="input-field">
-                    <option value="">Tutti i tipi</option>
-                    <option value="scambio">Scambi</option>
-                    <option value="sostituzione">Sostituzioni</option>
-                    <option value="cessione_parziale">Cessioni</option>
-                </select>
-            </div>
-        </div>
+     <div class="input-group">
+    <label class="input-label">Filtri avanzati</label>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
+        <select id="filtro-anno-storico" class="input-field">
+            <option value="tutti">Tutti gli anni</option>
+            <option value="2025">2025</option>
+            <option value="2026" selected>2026</option>
+        </select>
+        <select id="filtro-tipo-storico" class="input-field">
+            <option value="tutti">Tutti i tipi</option>
+            <option value="scambio">Scambi</option>
+            <option value="sostituzione">Sostituzioni</option>
+            <option value="cessione_parziale">Cessioni</option>
+        </select>
+        <select id="filtro-stato-storico" class="input-field">
+            <option value="tutti">Tutti gli stati</option>
+            <option value="approved">Approvate</option>
+            <option value="rejected">Rifiutate</option>
+        </select>
+    </div>
+</div>
         
         <div id="storico-approvazioni" class="lista-elementi">
             <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
@@ -643,6 +689,71 @@
         </button>
     </div>
 </div>
+<!-- ============================================ -->
+<!-- MODALE DETTAGLI DECISIONE (STORICO) -->
+<!-- ============================================ -->
+<div class="modale-overlay" id="modale-dettaglio-decisione">
+    <div class="modale-content" style="max-width: 500px;">
+        <div class="modale-header">
+            <h3 class="modale-title">
+                <span class="material-symbols-rounded" id="decisione-icona">info</span>
+                Dettagli Decisione
+            </h3>
+            <button onclick="chiudiModaleDettaglioDecisione()" style="background: none; border: none; color: var(--text-muted); cursor: pointer;">
+                <span class="material-symbols-rounded">close</span>
+            </button>
+        </div>
+        <div class="modale-body">
+            <div id="dettaglio-decisione-content">
+                <!-- Contenuto dinamico -->
+            </div>
+        </div>
+        <div class="modale-footer">
+            <button onclick="mostraDettagliTurno()" class="btn-action btn-secondary" style="flex: 1;">
+                <span class="material-symbols-rounded">calendar_month</span>
+                Vedi Turno
+            </button>
+            <button onclick="chiudiModaleDettaglioDecisione()" class="btn-action btn-primary" style="flex: 1;">
+                <span class="material-symbols-rounded">close</span>
+                Chiudi
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- MODALE DETTAGLI TURNO -->
+<!-- ============================================ -->
+<div class="modale-overlay" id="modale-dettaglio-turno-storico">
+    <div class="modale-content" style="max-width: 450px;">
+        <div class="modale-header">
+            <h3 class="modale-title">
+                <span class="material-symbols-rounded">calendar_month</span>
+                Dettagli Turno
+            </h3>
+            <button onclick="chiudiModaleDettaglioTurnoStorico()" style="background: none; border: none; color: var(--text-muted); cursor: pointer;">
+                <span class="material-symbols-rounded">close</span>
+            </button>
+        </div>
+        <div class="modale-body">
+            <div id="dettaglio-turno-storico-content">
+                <!-- Contenuto dinamico -->
+            </div>
+        </div>
+        <div class="modale-footer">
+            <button onclick="chiudiModaleDettaglioTurnoStorico()" class="btn-action btn-primary" style="width: 100%;">
+                Chiudi
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- AGGIUNTA FILTRO STATO NEL TAB STORICO (da inserire dopo filtro-tipo-storico) -->
+<!-- Cerca nel file: <select id="filtro-tipo-storico" class="input-field"> -->
+<!-- e aggiungi DOPO: -->
+
+
         </main>
 
         <!-- MESSAGGI -->
