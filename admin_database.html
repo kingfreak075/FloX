@@ -22,43 +22,42 @@
                 <div class="app-version">v2.0</div>
             </div>
             
-            <nav class="sidebar-nav">
-                <div class="nav-section">
-                    <h3>DATABASE</h3>
-                    <button class="nav-btn active" data-tab="config">
-                        <span class="material-symbols-rounded">settings</span>
-                        Configurazione
-                    </button>
-                    <button class="nav-btn" data-tab="tables">
-                        <span class="material-symbols-rounded">table_chart</span>
-                        Tabelle
-                    </button>
-                </div>
-                
-                <div class="nav-section">
-                    <h3>SINCRONIZZAZIONE</h3>
-                    <button class="nav-btn" data-tab="analyze">
-                        <span class="material-symbols-rounded">analytics</span>
-                        Analisi Tabella
-                    </button>
-                    <button class="nav-btn" data-tab="sync">
-                        <span class="material-symbols-rounded">sync</span>
-                        Sincronizza CSV
-                    </button>
-                </div>
-                
-                <div class="nav-section">
-                    <h3>UTILITIES</h3>
-                    <button class="nav-btn" data-tab="backup">
-                        <span class="material-symbols-rounded">backup</span>
-                        Backup/Ripristino
-                    </button>
-                    <button class="nav-btn" data-tab="logs">
-                        <span class="material-symbols-rounded">list_alt</span>
-                        Logs
-                    </button>
-                </div>
-            </nav>
+           <!-- Modifica sidebar esistente -->
+<nav class="sidebar-nav">
+    <!-- Sezione DATABASE (esistente) -->
+    <div class="nav-section">
+        <h3>DATABASE</h3>
+        <button class="nav-btn" data-tab="config">...</button>
+        <button class="nav-btn" data-tab="tables">...</button>
+    </div>
+    
+    <!-- NUOVA: Sezione GESTIONE MANUALE -->
+    <div class="nav-section">
+        <h3>GESTIONE MANUALE</h3>
+        <button class="nav-btn" data-tab="personnel">
+            <span class="material-symbols-rounded">groups</span>
+            Personale
+        </button>
+        <button class="nav-btn" data-tab="vehicles">
+            <span class="material-symbols-rounded">directions_car</span>
+            Veicoli
+        </button>
+    </div>
+    
+    <!-- Sezione SINCRONIZZAZIONE (esistente) -->
+    <div class="nav-section">
+        <h3>SINCRONIZZAZIONE</h3>
+        <button class="nav-btn" data-tab="analyze">...</button>
+        <button class="nav-btn" data-tab="sync">...</button>
+    </div>
+    
+    <!-- Sezione UTILITIES (esistente) -->
+    <div class="nav-section">
+        <h3>UTILITIES</h3>
+        <button class="nav-btn" data-tab="backup">...</button>
+        <button class="nav-btn" data-tab="logs">...</button>
+    </div>
+</nav>
             
             <div class="sidebar-footer">
                 <div class="db-status" id="db-status">
@@ -649,6 +648,40 @@
                     </div>
                 </div>
 
+
+<!-- NUOVO TAB: Gestione Personale -->
+
+<div id="tab-personnel" class="tab-content">
+    <div class="card">
+        <div class="card-header">
+            <h3><span class="material-symbols-rounded">groups</span> Gestione Personale</h3>
+            <div class="tabs-horizontal" id="personnel-tabs">
+                <button class="tab-btn active" data-personnel-table="tecnici">Tecnici</button>
+                <button class="tab-btn" data-personnel-table="manutentori">Manutentori</button>
+                <button class="tab-btn" data-personnel-table="supervisori">Supervisori</button>
+                <button class="tab-btn" data-personnel-table="venditori">Venditori</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Contenuto verrà popolato dinamicamente -->
+            <div id="personnel-content"></div>
+        </div>
+    </div>
+</div>
+
+<!-- NUOVO TAB: Gestione Veicoli -->
+
+<div id="tab-vehicles" class="tab-content">
+    <div class="card">
+        <div class="card-header">
+            <h3><span class="material-symbols-rounded">directions_car</span> Gestione Veicoli</h3>
+        </div>
+        <div class="card-body">
+            <!-- Contenuto verrà popolato dinamicamente -->
+            <div id="vehicles-content"></div>
+        </div>
+    </div>
+</div>
                 <!-- TAB 5: BACKUP -->
                 <div id="tab-backup" class="tab-content">
                     <div class="card">
@@ -743,7 +776,8 @@
     <!-- SCRIPT -->
     <script src="db-config.js"></script>
     <script src="admin_database.js"></script>
-
+<script src="db-rules.js"></script>  
+ </body>
 <!-- Aggiungi in fondo, PRIMA del tag </body> -->
 <div style="position: fixed; bottom: 10px; right: 10px; z-index: 1000;">
     <button onclick="testAdminState()" style="padding: 5px 10px; font-size: 12px; background: #4CAF50; color: white; border: none; border-radius: 4px;">
